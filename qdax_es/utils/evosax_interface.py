@@ -15,6 +15,8 @@ def net_shape(net):
 
 class DummyReshaper(PyTreeNode):
     """ A placeholder reshaper that does nothing"""
+    genotype_dim: int
+
     def flatten(self, network):
         return network
 
@@ -23,15 +25,18 @@ class DummyReshaper(PyTreeNode):
 
     @classmethod
     def init(self, network):
-        return DummyReshaper()
+        # Network is a vector
+        genotype_dim = network.shape[0]
+        return DummyReshaper(
+            genotype_dim=genotype_dim
+        )
 
 
-class QDaxReshaper(PyTreeNode):
+class ANNReshaper(DummyReshaper):
     """A class to reshape a network into a vector of floats and back"""
     split_indices: jnp.ndarray
     layer_shapes: jnp.ndarray
     tree_def: PyTreeDef
-    genotype_dim: int
 
     def flatten(self, network):
         """Flatten a network into a vector of floats """
@@ -71,7 +76,7 @@ class QDaxReshaper(PyTreeNode):
 
         print(f"Genotype dim: {genotype_dim}")
 
-        return QDaxReshaper(
+        return ANNReshaper(
             split_indices=split_indices,
             layer_shapes=layer_shapes,
             tree_def=tree_def,
