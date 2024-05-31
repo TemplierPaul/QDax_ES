@@ -1,0 +1,118 @@
+from __future__ import annotations
+
+from functools import partial
+from typing import Optional, Tuple, Callable
+
+import jax
+import jax.numpy as jnp
+
+from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    get_cells_indices,
+)
+
+from qdax_es.core.emitters.evosax_emitter import EvosaxEmitterAll
+
+from qdax_es.core.emitters.evosax_base_emitter import EvosaxEmitterState
+from qdax_es.utils.restart import RestartState, CMARestarter
+
+from qdax_es.utils.termination import cma_criterion
+
+class CMAMERestarter(CMARestarter):
+    """
+    Restart when the ES has converged
+    """
+    def restart_criteria(self, emitter_state, scores):
+        """
+        Check if the restart condition is met.
+        """
+
+        neg_improvement = jnp.all(scores < 0)
+        more_than_min = emitter_state.restart_state.generations >= self.min_gens
+        neg_improvement = jnp.logical_and(neg_improvement, more_than_min)
+        
+        cma_restart = super().restart_criteria(emitter_state, scores)
+
+        return jnp.logical_or(neg_improvement, cma_restart)
+
+
+class CMAMEEmitter(EvosaxEmitterAll):
+    """
+    CMA-ME emitter.
+    """
+    def __init__(
+        self,
+        centroids: Centroid,
+        es_hp = {},
+        es_type="CMA_ES",
+        scoring_fn: Callable[
+            [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
+        ]=None,
+        restarter = None,
+    ):
+        """
+        Initialize the ES emitter.
+        """
+        if restarter is None:
+            use_cma_criterion = es_type == "CMA_ES"
+            restarter = CMAMERestarter(
+                use_cma_criterion=use_cma_criterion
+            )
+            if use_cma_criterion:
+                print("Using CMA-ES criterion for restart")
+
+        super().__init__(
+            centroids=centroids,
+            es_hp=es_hp,
+            es_type=es_type,
+            ns_es=False,
+            novelty_archive_size=0,
+            scoring_fn=scoring_fn,
+            restarter=restarter,
+        )
+
+        self.ranking_criteria = self._cmame_criteria
+
+    def _cmame_criteria(self,
+        emitter_state: EvosaxEmitterState,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: Optional[ExtraScores],
+    ) -> jnp.ndarray:
+        """
+        Default: Improvement emitter
+        """
+        return self._improvement_criteria(
+            emitter_state=emitter_state,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            extra_scores=extra_scores,
+        )
+
+    def restart(
+            self, 
+            repertoire: MapElitesRepertoire,
+            emitter_state: EvosaxEmitterState,
+    ):
+        """
+        Restart from a random genome in the repertoire.
+        """
+        random_key = emitter_state.random_key
+        random_genotype, random_key = repertoire.sample(random_key, 1)
+
+        emitter_state = emitter_state.replace(
+            random_key=random_key,
+        )
+
+        emitter_state = self.restart_from(
+            emitter_state,
+            random_genotype,
+        )
+
+        return emitter_state

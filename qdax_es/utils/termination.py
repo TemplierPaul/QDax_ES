@@ -7,7 +7,7 @@ CMA_TOL_X_UP = 1e4
 CMA_TOL_CONDITION_C = 1e14
 
 def cma_criterion(
-    fitness: chex.Array, state: chex.ArrayTree, params: chex.ArrayTree
+    state: chex.ArrayTree
 ) -> bool:
     """Termination criterion specific to CMA-ES strategy. Default tolerances:
     tol_x - 1e-12 * sigma

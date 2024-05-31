@@ -19,7 +19,7 @@ from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     get_cells_indices,
 )
-from qdax.core.emitters.mees_emitter import NoveltyArchive
+from qdax_es.core.containers.novelty_archive import NoveltyArchive, DummyNoveltyArchive
 
 from evosax import EvoState, EvoParams, Strategies
 
@@ -52,28 +52,30 @@ class EvosaxEmitterState(EmitterState):
 class EvosaxEmitter(Emitter):
     def __init__(
         self,
-        batch_size: int,
         centroids: Centroid,
         es_hp = {},
         es_type="CMA_ES",
         ns_es=False,
-        novelty_archive_size=1,
+        novelty_archive_size=0,
         scoring_fn: Callable[
             [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
         ]=None,
-        restarter = DummyRestarter,
+        restarter = None,
     ):
         """
         Initialize the ES emitter.
         """
         
-        self._batch_size = batch_size
+        self._batch_size = es_hp["popsize"]
         self.es_hp = es_hp
         self.es_type = es_type
         self._centroids = centroids
         self.novelty_archive_size = novelty_archive_size
         self._num_descriptors = centroids.shape[1]
 
+        if restarter is None:
+            restarter = DummyRestarter()
+            print("No restarter provided. Using DummyRestarter.")
         self.restarter = restarter
 
         self.scoring_fn = scoring_fn
@@ -120,7 +122,7 @@ class EvosaxEmitter(Emitter):
 
         self.es = Strategies[self.es_type](
             num_dims=self.reshaper.genotype_dim,
-            popsize=self.batch_size,
+            # popsize=self.batch_size,
             **self.es_hp,
         )
         print(self.es)
@@ -133,10 +135,13 @@ class EvosaxEmitter(Emitter):
         )
 
         # Create empty Novelty archive
-        novelty_archive = NoveltyArchive.init(
-            size= self.novelty_archive_size, 
-            num_descriptors=self._num_descriptors,
-        )
+        if self.novelty_archive_size > 0:
+            novelty_archive = NoveltyArchive.init(
+                size= self.novelty_archive_size, 
+                num_descriptors=self._num_descriptors,
+            )
+        else:
+            novelty_archive = DummyNoveltyArchive()
 
         # Initialize repertoire with default values
         num_centroids = self._centroids.shape[0]
@@ -193,7 +198,7 @@ class EvosaxEmitter(Emitter):
         es_state = self.es.initialize(
             subkey, params=es_params
         )
-        es_state = es_state.strategy_state.replace(mean=init_mean)
+        es_state = es_state.replace(mean=init_mean)
 
         return emitter_state.replace(
             es_state=es_state,

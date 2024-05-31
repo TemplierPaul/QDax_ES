@@ -22,6 +22,14 @@ class EvosaxEmitterAll(EvosaxEmitter):
     """
     Emit the whole population of the ES, like CMA-ME.
     """
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return self._batch_size
+
     @partial(jax.jit, static_argnames=("self",))
     def emit(
             self,
@@ -46,9 +54,38 @@ class EvosaxEmitterAll(EvosaxEmitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: Optional[ExtraScores] = None,
-    ) -> Optional[EmitterState]:
+    ) -> Optional[EvosaxEmitterState]:
+        
+        emitter_state, restart_bool = self.start_state_update(
+            emitter_state,
+            repertoire,
+            genotypes,
+            fitnesses,
+            descriptors,
+            extra_scores,
+        )
+
+        emitter_state = self.finish_state_update(
+            emitter_state,
+            repertoire,
+            restart_bool,
+        )
+
+        return emitter_state
+        
+    
+    @partial(jax.jit, static_argnames=("self",))
+    def start_state_update(
+        self,
+        emitter_state: EvosaxEmitterState,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: Optional[ExtraScores] = None,
+    ) -> Optional[EvosaxEmitterState]:
         """
-        Update the state of the emitter, like ME-ES.
+        Update the state of the emitter.
         """
 
         scores = self.ranking_criteria(
@@ -71,15 +108,26 @@ class EvosaxEmitterAll(EvosaxEmitter):
             emitter_state,
             scores
         )
-        restart_bool = self.restarter.restart_criteria(emitter_state)
+        restart_bool = self.restarter.restart_criteria(emitter_state, scores)
+        return emitter_state, restart_bool
 
+    def finish_state_update(
+            self,
+            emitter_state: EvosaxEmitterState,
+            repertoire: MapElitesRepertoire,
+            restart_bool: bool,
+    ):
+        """
+        Finish the update with the restart step.
+        """
+        
         emitter_state = jax.lax.cond(
             restart_bool,
             lambda x: self.restart(repertoire=repertoire, emitter_state=x),
             lambda x: x,
             emitter_state
         )
-        
+
         random_key, subkey = jax.random.split(emitter_state.random_key)
         emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)
 
@@ -89,6 +137,14 @@ class EvosaxEmitterCenter(EvosaxEmitter):
     """
     Only emit the center of the ES.
     """
+    @property
+    def batch_size(self) -> int:
+        """
+        Returns:
+            the batch size emitted by the emitter.
+        """
+        return 1
+    
     @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
@@ -125,7 +181,7 @@ class EvosaxEmitterCenter(EvosaxEmitter):
             random_key=random_key
             )
         
-        fitnesses, descriptors, extra_scores, random_key = self.scoring_fn(
+        pop_fitnesses, pop_descriptors, pop_extra_scores, random_key = self.scoring_fn(
             genotypes=offspring, 
             random_key=subkey
             )
@@ -133,10 +189,10 @@ class EvosaxEmitterCenter(EvosaxEmitter):
         scores = self.ranking_criteria(
             emitter_state=emitter_state,
             repertoire=repertoire,
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            extra_scores=extra_scores,
+            genotypes=offspring,
+            fitnesses=pop_fitnesses,
+            descriptors=pop_descriptors,
+            extra_scores=pop_extra_scores,
         )
 
         emitter_state = self.es_tell(
@@ -144,13 +200,27 @@ class EvosaxEmitterCenter(EvosaxEmitter):
             offspring, 
             scores
             )
-        
-        # Updating novelty archive
+
+        # Updating novelty archive: add the center only
         novelty_archive = emitter_state.novelty_archive.update(descriptors)
         emitter_state = emitter_state.replace(novelty_archive=novelty_archive)
 
         # TODO: add restart
+        emitter_state = self.restarter.update(
+            emitter_state,
+            scores
+        )
+        
+        restart_bool = self.restarter.restart_criteria(emitter_state, scores)
 
+        emitter_state = jax.lax.cond(
+            restart_bool,
+            lambda x: self.restart(repertoire=repertoire, emitter_state=x),
+            lambda x: x,
+            emitter_state
+        )
+
+        random_key, subkey = jax.random.split(emitter_state.random_key)
         emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)
 
         return emitter_state

@@ -9,6 +9,28 @@ import jax.numpy as jnp
 # from qdax.core.containers.mapelites_repertoire import ESRepertoire
 from qdax.types import Descriptor
 
+class DummyNoveltyArchive(flax.struct.PyTreeNode):
+    """
+    Placeholder archive to reduce the cost when it's not used.
+    """
+    
+    @classmethod
+    def init(cls) -> DummyNoveltyArchive:
+        return cls()
+
+    @jax.jit
+    def update(self, descriptor: Descriptor) -> DummyNoveltyArchive:
+        return self
+
+    @partial(jax.jit, static_argnames=("num_nearest_neighbors",))
+    def novelty(
+        self,
+        descriptors: Descriptor,
+        num_nearest_neighbors: int,
+    ) -> jnp.ndarray:
+        return jnp.zeros(descriptors.shape[0])
+
+
 class NoveltyArchive(flax.struct.PyTreeNode):
     """Novelty Archive used by NS-ES.
 
