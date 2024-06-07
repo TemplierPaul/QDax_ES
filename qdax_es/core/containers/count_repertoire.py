@@ -41,6 +41,10 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
 
     count: Count
 
+    @property
+    def total_count(self):
+        return self.count.sum()
+
     def save(self, path: str = "./") -> None:
         """Saves the repertoire on disk in the form of .npy files.
 

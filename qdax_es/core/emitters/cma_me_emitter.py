@@ -74,6 +74,8 @@ class CMAMEEmitter(EvosaxEmitterAll):
         )
 
         self.ranking_criteria = self._cmame_criteria
+        self.restart = self._restart_repertoire
+
 
     def _cmame_criteria(self,
         emitter_state: EvosaxEmitterState,
@@ -95,24 +97,3 @@ class CMAMEEmitter(EvosaxEmitterAll):
             extra_scores=extra_scores,
         )
 
-    def restart(
-            self, 
-            repertoire: MapElitesRepertoire,
-            emitter_state: EvosaxEmitterState,
-    ):
-        """
-        Restart from a random genome in the repertoire.
-        """
-        random_key = emitter_state.random_key
-        random_genotype, random_key = repertoire.sample(random_key, 1)
-
-        emitter_state = emitter_state.replace(
-            random_key=random_key,
-        )
-
-        emitter_state = self.restart_from(
-            emitter_state,
-            random_genotype,
-        )
-
-        return emitter_state

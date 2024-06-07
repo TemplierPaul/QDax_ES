@@ -67,3 +67,5 @@ class CMAMEAnnealingEmitter(CMAMEEmitter):
         emitter_state = emitter_state.replace(previous_fitnesses=default_thresholds)
 
         return emitter_state, random_key
+    
+    

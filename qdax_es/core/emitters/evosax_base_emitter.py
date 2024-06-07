@@ -88,6 +88,8 @@ class EvosaxEmitter(Emitter):
         if ns_es:
             self.ranking_criteria = self._novelty_criteria
 
+        self.restart = self._restart_random
+
     @partial(
         jax.jit,
         static_argnames=("self",),
@@ -205,8 +207,7 @@ class EvosaxEmitter(Emitter):
             random_key=random_key,
         )
 
-
-    def restart(
+    def _restart_random(
             self, 
             repertoire: MapElitesRepertoire,
             emitter_state: EvosaxEmitterState,
@@ -226,6 +227,31 @@ class EvosaxEmitter(Emitter):
             es_state=es_state,
             random_key=random_key,
         )
+    
+    def _restart_repertoire(
+            self,
+            repertoire: MapElitesRepertoire,
+            emitter_state: EvosaxEmitterState,
+    ):
+        """
+        Restart from a random cell in the repertoire.
+        """
+        random_key = emitter_state.random_key
+        random_genotype, random_key = repertoire.sample(random_key, 1)
+
+        emitter_state = emitter_state.replace(
+            random_key=random_key,
+        )
+
+        emitter_state = self.restart_from(
+            emitter_state,
+            random_genotype,
+        )
+
+        return emitter_state
+
+
+
     
     def es_tell(
             self, 

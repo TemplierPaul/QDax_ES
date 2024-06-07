@@ -27,6 +27,7 @@ class DummyRestarter:
         """
         return False
     
+
 class FixedGens(DummyRestarter):
     """
     Restart every max_gens generations.
@@ -54,7 +55,25 @@ class FixedGens(DummyRestarter):
         gens = emitter_state.restart_state.generations
         
         return jax.numpy.where(gens >= self.max_gens, True, False)
-        
+
+
+class ConvergenceRestarter(FixedGens):
+    """
+    Restart when the ES has converged
+    """
+    def __init__(self, min_score_spread, max_gens=jnp.inf, min_gens=0):
+        super().__init__(max_gens=max_gens)
+        self.min_score_spread = min_score_spread
+        self.min_gens = min_gens
+
+    def restart_criteria(self, emitter_state, scores):
+        """
+        Check if the restart condition is met.
+        """
+        max_gens = emitter_state.restart_state.generations >= self.max_gens
+        min_gens = emitter_state.restart_state.generations >= self.min_gens
+        converged = jnp.max(scores) - jnp.min(scores) < self.min_score_spread
+        return jnp.logical_or(max_gens, jnp.logical_and(min_gens, converged))
 
 
 class CMARestarter(FixedGens):
@@ -91,3 +110,39 @@ class CMARestarter(FixedGens):
         aggregated = jnp.logical_or(aggregated, max_gens)
 
         return aggregated
+    
+class CombinedRestartState(PyTreeNode):
+    restart_states: RestartState
+
+class CombinedRestarter:
+    def __init__(self, restarters):
+        self.restarters = restarters
+
+    def init(self):
+        return CombinedRestartState(
+            restart_states=[r.init() for r in self.restarters]
+        )
+
+    def update(self, emitter_state, scores):
+        """
+        Update the restart state.
+        """
+        restart_states = [
+            r.update(emitter_state, scores)
+            for r in self.restarters
+        ]
+        return emitter_state.replace(restart_states=restart_states)
+    
+    def restart_criteria(self, emitter_state, scores):
+        """
+        Check if the restart condition is met.
+        """
+        return jnp.any(
+            jnp.array(
+                [
+                    r.restart_criteria(emitter_state, scores)
+                    for r in self.restarters
+                ]
+            )
+        )
+    

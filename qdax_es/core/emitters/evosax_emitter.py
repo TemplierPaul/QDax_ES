@@ -103,7 +103,6 @@ class EvosaxEmitterAll(EvosaxEmitter):
         novelty_archive = emitter_state.novelty_archive.update(descriptors)
         emitter_state = emitter_state.replace(novelty_archive=novelty_archive)
         
-        # TODO: Add restart
         emitter_state = self.restarter.update(
             emitter_state,
             scores

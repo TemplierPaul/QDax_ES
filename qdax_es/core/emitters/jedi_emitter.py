@@ -6,7 +6,7 @@ from chex import ArrayTree
 
 import jax
 import jax.numpy as jnp
-import numpy as np 
+from jax.tree_util import tree_map
 
 from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
@@ -35,14 +35,34 @@ def split(array, n):
 def split_tree(tree, n):
     return jax.tree_map(lambda x: split(x, n), tree)
 
-class JEDiEmitterState(EvosaxEmitterState):
-    wtfs_alpha: float
-    wtfs_target: Descriptor
-    # emitter_index: int= 0
 
 def net_shape(net):
     return jax.tree_map(lambda x: x.shape, net)
 
+def get_closest_genotype(
+    bd: Descriptor,
+    repertoire: MapElitesRepertoire,
+):
+    """
+    Get the genotype closest to the given descriptor.
+    """
+    mask = repertoire.fitnesses > -jnp.inf
+    distances = jnp.where(
+        mask,
+        jnp.linalg.norm(repertoire.descriptors - bd, axis=1),
+        jnp.inf,
+    )
+    index = jnp.argmin(distances)
+    start_bd = repertoire.descriptors[index]
+    start_genome = tree_map(
+        lambda x: x[index], repertoire.genotypes
+    )
+    return start_genome, start_bd
+
+
+class JEDiEmitterState(EvosaxEmitterState):
+    wtfs_alpha: float
+    wtfs_target: Descriptor
 
 class JEDiEmitter(EvosaxEmitterAll):
     """
@@ -82,6 +102,7 @@ class JEDiEmitter(EvosaxEmitterAll):
 
         self.ranking_criteria = self._wtfs_criteria
         self.wtfs_alpha = wtfs_alpha
+        self.restart = self._jedi_restart
 
     def init(
         self, init_genotypes: Genotype, random_key: RNGKey,       
@@ -130,173 +151,55 @@ class JEDiEmitter(EvosaxEmitterAll):
         ) * norm_fitnesses + wtf_alpha * distance_score
         return wtf
 
-class JEDiPoolEmitterState(EmitterState):
-    """State of an emitter than use multiple emitters in a parallel manner.
-
-    WARNING: this is not the emitter state of Multi-Emitter MAP-Elites.
-
-    Args:
-        emitter_states: a tuple of emitter states
-    """
-
-    emitter_states: EmitterState
-
-
-class JEDiPoolEmitter(Emitter):
-    def __init__(
+    def _jedi_restart(
         self,
-        pool_size: int,
-        emitter:Emitter,
-    ):
-        self.pool_size = pool_size
-        self.emitter = emitter
-
-        # indexes_separation_batches = self.get_indexes_separation_batches(pool_size, emitter)
-        # self.indexes_start_batches = jnp.array(indexes_separation_batches[:-1])
-        # self.indexes_end_batches = jnp.array(indexes_separation_batches[1:])
-
-        # self.get_batch = partial(jax.lax.dynamic_slice_in_dim, slice_size=emitter.batch_size, axis=0)
-        # self.get_batch = jax.jit(self.get_batch)
-
-    @property
-    def batch_size(self) -> int:
-        """
-        Returns:
-            the batch size emitted by the emitter.
-        """
-        return self.emitter.batch_size * self.pool_size
-
-    def init(
-        self, init_genotypes: Optional[Genotype], random_key: RNGKey
-    ) -> Tuple[Optional[JEDiPoolEmitterState], RNGKey]:
-        
-        # prepare keys for each emitter
-        random_key, subkey = jax.random.split(random_key)
-        subkeys = jax.random.split(subkey, self.pool_size)
-
-        emitter_states, keys = jax.vmap(
-            self.emitter.init,
-            in_axes=(None, 0)
-        )(
-            init_genotypes, subkeys
-        )
-
-        emitter_state = JEDiPoolEmitterState(emitter_states)
-        return emitter_state, random_key
-
-    # @partial(jax.jit, static_argnames=("self",))
-    def state_update(
-        self,
+        repertoire: MapElitesRepertoire,
         emitter_state: EvosaxEmitterState,
-        repertoire: MapElitesRepertoire,
-        genotypes: Genotype,
-        fitnesses: Fitness,
-        descriptors: Descriptor,
-        extra_scores: Optional[ExtraScores] = None,
-    ) -> Optional[JEDiPoolEmitterState]:
+        target_bd_index: int,
+    ):
         """
-        Update the state of the emitters
+        JEDi emitter with uniform target selection (no GP).
         """
+        # Get centroid based on target_bd_index
+        target_bd = repertoire.centroids[target_bd_index]
 
-        if emitter_state is None:
-            return None
-
-        # jax.debug.print("states: {}", net_shape(emitter_state.emitter_states))
-
-        split_fitnesses = split(fitnesses, self.pool_size)
-        split_descriptors = split(descriptors, self.pool_size)
-
-        # jax.debug.print("split_fitnesses: {}", net_shape(split_fitnesses))
-        # jax.debug.print("split_descriptors: {}", net_shape(split_descriptors))
-
-        split_genotypes = split_tree(genotypes, self.pool_size)
-        split_extra_scores = split_tree(extra_scores, self.pool_size)
-
-        # jax.debug.print("split_genotypes: {}", net_shape(split_genotypes))
-        # jax.debug.print("split_extra_scores: {}", net_shape(split_extra_scores))
-
-
-        indices = jnp.arange(self.pool_size)
-        new_sub_emitter_state, emitter_restart = jax.vmap(
-            lambda i, s, g, f, d, e: self.emitter.start_state_update(s, repertoire, g, f, d, e),
-            in_axes=(0, 0, 0, 0, 0, 0)
-        )(
-            indices,
-            emitter_state.emitter_states,
-            split_genotypes,
-            split_fitnesses,
-            split_descriptors,
-            split_extra_scores,
+        emitter_state = emitter_state.replace(
+            wtfs_target=target_bd,
+        )
+                
+        start_genome, start_bd = get_closest_genotype(
+            bd=target_bd,
+            repertoire=repertoire,
         )
 
-        # jax.debug.print("new_sub_emitter_state: {}", net_shape(new_sub_emitter_state))
+        return self.restart_from(
+            emitter_state=emitter_state,
+            init_genome=start_genome,
+        )
 
-        need_restart = jnp.any(jnp.array(emitter_restart))
-
-        repertoire = jax.lax.cond(
-            need_restart,
-            lambda x: x.fit_gp(n_steps=100),
+    def finish_state_update(
+            self,
+            emitter_state: EvosaxEmitterState,
+            repertoire: MapElitesRepertoire,
+            restart_bool: bool,
+            target_bd_index: int,
+    ):
+        """
+        Finish the update with the restart step.
+        """
+        
+        emitter_state = jax.lax.cond(
+            restart_bool,
+            lambda x: self.restart(
+                repertoire=repertoire, 
+                emitter_state=x,
+                target_bd_index=target_bd_index,
+                ),
             lambda x: x,
-            repertoire
+            emitter_state
         )
 
-        final_emitter_states = jax.vmap(
-            lambda i, state, restart: self.emitter.finish_state_update(state, repertoire, restart),
-            in_axes=(0, 0, 0)
-        )(
-            indices,
-            new_sub_emitter_state,
-            emitter_restart
-        )
+        random_key, subkey = jax.random.split(emitter_state.random_key)
+        emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)
 
-        # jax.debug.print("final_emitter_states: {}", net_shape(final_emitter_states))
-
-        return JEDiPoolEmitterState(final_emitter_states)
-
-    # @partial(jax.jit, static_argnames=("self",))
-    def emit(
-        self,
-        repertoire: MapElitesRepertoire,
-        emitter_state: Optional[JEDiPoolEmitterState],
-        random_key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
-        """Emit new population. Use all the sub emitters to emit subpopulation
-        and gather them.
-
-        Args:
-            repertoire: a repertoire of genotypes.
-            emitter_state: the current state of the emitter.
-            random_key: key for random operations.
-
-        Returns:
-            Offsprings and a new random key.
-        """
-
-        if emitter_state is None:
-            raise ValueError("Emitter state must be initialized before emitting.")
-
-        # prepare subkeys for each sub emitter
-        random_key, subkey = jax.random.split(random_key)
-        subkeys = jax.random.split(subkey, self.pool_size)
-
-        jax.debug.print("emitter_states: {}", net_shape(emitter_state.emitter_states))
-
-        # vmap
-        all_offsprings, keys = jax.vmap(
-            lambda s, k: self.emitter.emit(repertoire, s, k),
-            in_axes=(0, 0))(
-            emitter_state.emitter_states,
-            subkeys,
-        ) 
-
-        jax.debug.print("offspring batch: {}", net_shape(all_offsprings))
-
-        # concatenate offsprings together: remove the first dimension
-        offsprings = jax.tree_map(
-            lambda x: jnp.concatenate(x, axis=0),
-            all_offsprings
-        )
-
-        jax.debug.print("offspring batch: {}", net_shape(offsprings))
-
-        return offsprings, random_key
+        return emitter_state

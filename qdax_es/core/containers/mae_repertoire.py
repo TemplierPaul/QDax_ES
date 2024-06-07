@@ -126,8 +126,6 @@ class MAERepertoire(CountMapElitesRepertoire):
             The updated MAP-Elites repertoire.
         """
 
-
-
         batch_of_indices = get_cells_indices(batch_of_descriptors, self.centroids)
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
         batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
@@ -355,6 +353,9 @@ class MAERepertoire(CountMapElitesRepertoire):
             archive_learning_rate=archive_learning_rate,
             count=default_count,
         )
+    
+    def fit_gp(self, n_steps=1000):
+        return self
 
 
 
