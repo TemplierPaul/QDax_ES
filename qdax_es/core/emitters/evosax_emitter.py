@@ -16,6 +16,7 @@ from qdax.core.containers.mapelites_repertoire import (
 )
 
 from qdax_es.core.emitters.evosax_base_emitter import EvosaxEmitter, EvosaxEmitterState
+from qdax_es.core.containers.novelty_archive import NoveltyArchive
 
 
 class EvosaxEmitterAll(EvosaxEmitter):
@@ -27,6 +28,13 @@ class EvosaxEmitterAll(EvosaxEmitter):
         """
         Returns:
             the batch size emitted by the emitter.
+        """
+        return self._batch_size
+    
+    @property
+    def evals_per_gen(self):
+        """
+        Evaluate the population in the main loop
         """
         return self._batch_size
 
@@ -95,6 +103,7 @@ class EvosaxEmitterAll(EvosaxEmitter):
             fitnesses=fitnesses,
             descriptors=descriptors,
             extra_scores=extra_scores,
+            novelty_archive=emitter_state.novelty_archive,
         )
 
         emitter_state = self.es_tell(emitter_state, genotypes, scores)
@@ -144,6 +153,13 @@ class EvosaxEmitterCenter(EvosaxEmitter):
         """
         return 1
     
+    @property
+    def evals_per_gen(self):
+        """
+        Evaluate the center in the main loop and the whole population in the update
+        """
+        return self._batch_size + 1
+    
     @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
@@ -161,17 +177,18 @@ class EvosaxEmitterCenter(EvosaxEmitter):
         return offspring, random_key
     
     @partial(jax.jit, static_argnames=("self",))
-    def state_update(
+    def _external_novelty_state_update(
         self,
         emitter_state: EvosaxEmitterState,
         repertoire: MapElitesRepertoire,
+        novelty_archive: NoveltyArchive, 
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: Optional[ExtraScores] = None,
     ) -> Optional[EmitterState]:
         """
-        Do an ES step.
+        Do an ES step for a specified novelty archive, return behaviors to update the archive.
         """
         random_key, subkey = jax.random.split(emitter_state.random_key)
 
@@ -192,6 +209,7 @@ class EvosaxEmitterCenter(EvosaxEmitter):
             fitnesses=pop_fitnesses,
             descriptors=pop_descriptors,
             extra_scores=pop_extra_scores,
+            novelty_archive=emitter_state.novelty_archive,
         )
 
         emitter_state = self.es_tell(
@@ -199,11 +217,7 @@ class EvosaxEmitterCenter(EvosaxEmitter):
             offspring, 
             scores
             )
-
-        # Updating novelty archive: add the center only
-        novelty_archive = emitter_state.novelty_archive.update(descriptors)
-        emitter_state = emitter_state.replace(novelty_archive=novelty_archive)
-
+        
         # TODO: add restart
         emitter_state = self.restarter.update(
             emitter_state,
@@ -221,5 +235,33 @@ class EvosaxEmitterCenter(EvosaxEmitter):
 
         random_key, subkey = jax.random.split(emitter_state.random_key)
         emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)
+
+        return emitter_state, pop_descriptors
+
+    @partial(jax.jit, static_argnames=("self",))
+    def state_update(
+        self,
+        emitter_state: EvosaxEmitterState,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: Optional[ExtraScores] = None,
+    ) -> Optional[EmitterState]:
+        novelty_archive = emitter_state.novelty_archive
+
+        emitter_state, descriptors = self._external_novelty_state_update(
+            emitter_state,
+            repertoire,
+            novelty_archive,
+            genotypes,
+            fitnesses,
+            descriptors,
+            extra_scores,
+        )
+
+        # Updating novelty archive: add the center only
+        novelty_archive = emitter_state.novelty_archive.update(descriptors)
+        emitter_state = emitter_state.replace(novelty_archive=novelty_archive)
 
         return emitter_state

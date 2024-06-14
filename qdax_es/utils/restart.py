@@ -70,6 +70,7 @@ class ConvergenceRestarter(FixedGens):
         """
         Check if the restart condition is met.
         """
+        # jax.debug.print("diff: {}", jnp.max(scores) - jnp.min(scores))
         max_gens = emitter_state.restart_state.generations >= self.max_gens
         min_gens = emitter_state.restart_state.generations >= self.min_gens
         converged = jnp.max(scores) - jnp.min(scores) < self.min_score_spread
@@ -111,38 +112,38 @@ class CMARestarter(FixedGens):
 
         return aggregated
     
-class CombinedRestartState(PyTreeNode):
-    restart_states: RestartState
+class StaleRestartState(PyTreeNode):
+    staleness: int = 0
 
-class CombinedRestarter:
-    def __init__(self, restarters):
-        self.restarters = restarters
+class MEMESStaleRestarter(DummyRestarter):
+    def __init__(self, Smax=32):
+        self.Smax = Smax
 
-    def init(self):
-        return CombinedRestartState(
-            restart_states=[r.init() for r in self.restarters]
-        )
+        def init(self):
+            return StaleRestartState(staleness=0)
 
-    def update(self, emitter_state, scores):
-        """
-        Update the restart state.
-        """
-        restart_states = [
-            r.update(emitter_state, scores)
-            for r in self.restarters
-        ]
-        return emitter_state.replace(restart_states=restart_states)
-    
     def restart_criteria(self, emitter_state, scores):
         """
         Check if the restart condition is met.
         """
-        return jnp.any(
-            jnp.array(
-                [
-                    r.restart_criteria(emitter_state, scores)
-                    for r in self.restarters
-                ]
-            )
-        )
+        staleness = emitter_state.restart_state.staleness
+        return jnp.where(staleness >= self.Smax, True, False)
     
+    def update(self, emitter_state, scores):
+        return emitter_state
+
+    def update_staleness(self, emitter_state, added):
+        """
+        Update the restart state.
+        """
+        # Check reset
+        staleness = emitter_state.restart_state.staleness
+        staleness = jax.numpy.where(staleness > self.Smax, 0, staleness)
+        # Add 1 to the generations
+        staleness = jnp.where(
+            added,
+            0,
+            staleness + 1
+        )
+        restart_state = emitter_state.restart_state.replace(staleness=staleness)
+        return emitter_state.replace(restart_state=restart_state)

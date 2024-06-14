@@ -49,6 +49,17 @@ class EvosaxEmitterState(EmitterState):
     novelty_archive: NoveltyArchive
     restart_state: RestartState
 
+
+class MultiESEmitterState(EmitterState):
+    """State of an emitter than use multiple ES in a parallel manner.
+
+    Args:
+        emitter_states: a tree of emitter states
+        
+    """
+
+    emitter_states: EmitterState
+
 class EvosaxEmitter(Emitter):
     def __init__(
         self,
@@ -71,6 +82,7 @@ class EvosaxEmitter(Emitter):
         self.es_type = es_type
         self._centroids = centroids
         self.novelty_archive_size = novelty_archive_size
+        self.novelty_nearest_neighbors = 10
         self._num_descriptors = centroids.shape[1]
 
         if restarter is None:
@@ -87,6 +99,7 @@ class EvosaxEmitter(Emitter):
         self.ranking_criteria = self._fitness_criteria
         if ns_es:
             self.ranking_criteria = self._novelty_criteria
+
 
         self.restart = self._restart_random
 
@@ -251,7 +264,9 @@ class EvosaxEmitter(Emitter):
         return emitter_state
 
 
-
+    @property
+    def evals_per_gen(self):
+        raise NotImplementedError("This method should be implemented in the child class")
     
     def es_tell(
             self, 
@@ -301,6 +316,7 @@ class EvosaxEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: Optional[ExtraScores],
+        novelty_archive: NoveltyArchive = None
     ) -> jnp.ndarray:
         """
         Use the fitness for standard ES. 
@@ -316,15 +332,42 @@ class EvosaxEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: Optional[ExtraScores],
+        novelty_archive: NoveltyArchive
     ) -> jnp.ndarray:
         """
         NS-ES novelty criteria.
         """
 
-        novelty = emitter_state.novelty_archive.novelty(
-                    descriptors, self._config.novelty_nearest_neighbors
+        novelty = novelty_archive.novelty(
+                    descriptors, self.novelty_nearest_neighbors
                 )
         return novelty
+
+    def _combined_criteria(
+        self,
+        emitter_state: EvosaxEmitterState,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: Optional[ExtraScores],
+        novelty_archive: NoveltyArchive
+    ) -> jnp.ndarray:
+        """
+        NS-ES novelty criteria.
+        """
+
+        novelty = novelty_archive.novelty(
+                    descriptors, self.novelty_nearest_neighbors
+                )
+        
+        # Combine novelty and fitness: ratio = 0 for novelty, 1 for fitness
+        ratio = emitter_state.explore_exploit
+
+        scores = fitnesses * ratio + novelty * (1 - ratio)
+
+        return scores
+
     
     def _improvement_criteria(
         self,
@@ -334,6 +377,7 @@ class EvosaxEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: Optional[ExtraScores],
+        novelty_archive: NoveltyArchive = None
     ) -> jnp.ndarray:
         """
         Improvement criteria.

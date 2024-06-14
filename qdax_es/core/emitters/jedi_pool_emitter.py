@@ -18,9 +18,8 @@ from qdax.core.containers.mapelites_repertoire import (
 from qdax.core.emitters.multi_emitter import MultiEmitter, MultiEmitterState
 from qdax.core.emitters.emitter import Emitter, EmitterState
 
-from qdax_es.core.emitters.evosax_emitter import EvosaxEmitterAll
 
-from qdax_es.core.emitters.evosax_base_emitter import EvosaxEmitterState
+from qdax_es.core.emitters.evosax_base_emitter import EvosaxEmitterState, MultiESEmitterState
 from qdax_es.core.emitters.jedi_emitter import (
     JEDiEmitterState,
     net_shape,
@@ -28,18 +27,6 @@ from qdax_es.core.emitters.jedi_emitter import (
     split_tree,
 )
 from qdax_es.utils.pareto_selection import get_pareto_indices
-
-class JEDiPoolEmitterState(EmitterState):
-    """State of an emitter than use multiple emitters in a parallel manner.
-
-    WARNING: this is not the emitter state of Multi-Emitter MAP-Elites.
-
-    Args:
-        emitter_states: a tuple of emitter states
-    """
-
-    emitter_states: EmitterState
-    train_gp: bool = False
 
 
 class UniformJEDiPoolEmitter(Emitter):
@@ -58,10 +45,17 @@ class UniformJEDiPoolEmitter(Emitter):
             the batch size emitted by the emitter.
         """
         return self.emitter.batch_size * self.pool_size
+    
+    @property
+    def evals_per_gen(self):
+        """
+        Evaluate the population in the main loop for 1 emitter state
+        """
+        return self.emitter.batch_size * self.pool_size
 
     def init(
         self, init_genotypes: Optional[Genotype], random_key: RNGKey
-    ) -> Tuple[Optional[JEDiPoolEmitterState], RNGKey]:
+    ) -> Tuple[Optional[MultiESEmitterState], RNGKey]:
         
         # prepare keys for each emitter
         random_key, subkey = jax.random.split(random_key)
@@ -74,7 +68,7 @@ class UniformJEDiPoolEmitter(Emitter):
             init_genotypes, subkeys
         )
 
-        emitter_state = JEDiPoolEmitterState(emitter_states)
+        emitter_state = MultiESEmitterState(emitter_states)
         return emitter_state, random_key
 
     @partial(jax.jit, static_argnames=("self",))
@@ -86,7 +80,7 @@ class UniformJEDiPoolEmitter(Emitter):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: Optional[ExtraScores] = None,
-    ) -> Optional[JEDiPoolEmitterState]:
+    ) -> Optional[MultiESEmitterState]:
         """
         Update the state of the emitters
         """
@@ -116,7 +110,7 @@ class UniformJEDiPoolEmitter(Emitter):
         # jax.debug.print("new_sub_emitter_state: {}", net_shape(new_sub_emitter_state))
 
         need_restart = jnp.any(jnp.array(need_train_gp))
-        # jax.debug.print("need_restart: {}", need_train_gp.sum())
+        jax.debug.print("need_restart: {}", need_train_gp.sum())
 
         target_bd_indices = self.get_target_bd_indices(
             repertoire=repertoire,
@@ -135,13 +129,13 @@ class UniformJEDiPoolEmitter(Emitter):
 
         # jax.debug.print("final_emitter_states: {}", net_shape(final_emitter_states))
 
-        return JEDiPoolEmitterState(final_emitter_states)
+        return MultiESEmitterState(final_emitter_states)
 
     @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: MapElitesRepertoire,
-        emitter_state: Optional[JEDiPoolEmitterState],
+        emitter_state: Optional[MultiESEmitterState],
         random_key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """Emit new population. Use all the sub emitters to emit subpopulation

@@ -18,6 +18,7 @@ from qdax.core.containers.mapelites_repertoire import (
 from qdax.core.emitters.multi_emitter import MultiEmitter, MultiEmitterState
 from qdax.core.emitters.emitter import Emitter, EmitterState
 
+from qdax_es.core.containers.novelty_archive import NoveltyArchive, DummyNoveltyArchive
 from qdax_es.core.emitters.evosax_emitter import EvosaxEmitterAll
 
 from qdax_es.core.emitters.evosax_base_emitter import EvosaxEmitterState
@@ -100,7 +101,8 @@ class JEDiEmitter(EvosaxEmitterAll):
             restarter=restarter,
         )
 
-        self.ranking_criteria = self._wtfs_criteria
+        # self.ranking_criteria = self._wtfs_criteria
+        self.ranking_criteria = self._global_wtfs_criteria
         self.wtfs_alpha = wtfs_alpha
         self.restart = self._jedi_restart
 
@@ -123,6 +125,7 @@ class JEDiEmitter(EvosaxEmitterAll):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: Optional[ExtraScores],
+        novelty_archive: NoveltyArchive = None
     ) -> jnp.ndarray:
         """
         Weighted Target Fitness Score
@@ -144,6 +147,53 @@ class JEDiEmitter(EvosaxEmitterAll):
         # Normalized fitness
         min_fit = jnp.min(fitnesses)
         max_fit = jnp.max(fitnesses)
+        norm_fitnesses = (fitnesses - min_fit) / (max_fit - min_fit + EPSILON)
+        # Weighted target fitness
+        wtf = (
+            1 - wtf_alpha
+        ) * norm_fitnesses + wtf_alpha * distance_score
+        return wtf
+    
+    def _global_wtfs_criteria(
+        self,
+        emitter_state: EvosaxEmitterState,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: Optional[ExtraScores],
+        novelty_archive: NoveltyArchive = None
+    ) -> jnp.ndarray:
+        """
+        Weighted Target Fitness Score with normalization based on global min/max
+        """
+        target_bd = emitter_state.wtfs_target
+        wtf_alpha = emitter_state.wtfs_alpha
+
+        # jax.debug.print("descriptors: {}", descriptors.shape)
+        # jax.debug.print("target_bd: {}", target_bd.shape)
+
+        # Normalized distance
+        distance = jnp.linalg.norm(descriptors - target_bd, axis=1)
+        # argsort
+        min_dist = 0
+        max_dist = jnp.max(
+            jnp.linalg.norm(repertoire.centroids - target_bd, axis=1)
+        )
+
+        norm_distance = (distance - min_dist) / (max_dist - min_dist + EPSILON)
+        distance_score = 1 - norm_distance  # To minimize distance
+
+        # Normalized fitness
+        rep_fitnesses = repertoire.fitnesses
+        max_fit = jnp.max(rep_fitnesses)
+        max_fit = jnp.maximum(max_fit, jnp.max(fitnesses))
+
+        # replace -inf with + inf
+        rep_fitnesses = jnp.where(rep_fitnesses == -jnp.inf, jnp.inf, rep_fitnesses)
+        min_fit = jnp.min(rep_fitnesses)
+        min_fit = jnp.minimum(min_fit, jnp.min(fitnesses))
+        
         norm_fitnesses = (fitnesses - min_fit) / (max_fit - min_fit + EPSILON)
         # Weighted target fitness
         wtf = (

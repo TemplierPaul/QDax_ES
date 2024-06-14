@@ -109,13 +109,13 @@ class GPRepertoire(CountMapElitesRepertoire):
                     AB
                     CD
                     """,
-                    figsize=(15, 15),
+                    figsize=(20, 15),
                 )
         else:
             fig, axes = plt.subplot_mosaic("""
                 AB
                 """,
-                figsize=(15, 8),
+                figsize=(20, 8),
             )
         try:
             axes["A"] = plot_2d_map_elites_repertoire(
@@ -131,11 +131,12 @@ class GPRepertoire(CountMapElitesRepertoire):
                 min_bd, 
                 max_bd, 
                 log_scale=True, 
-                ax=axes["B"]
+                ax=axes["B"],
+                colormap="plasma",
                 )
             
             if plot_gp:
-                print(f"Plot GP LS: {self.gp_params.lengthscale}")
+                # print(f"Plot GP LS: {self.gp_params.lengthscale}")
                 means, covs = self.batch_predict(self.centroids)
 
                 axes["C"] = plot_archive_value(
@@ -155,7 +156,8 @@ class GPRepertoire(CountMapElitesRepertoire):
                     title="GP variance"
                 )
             plt.suptitle(title, fontsize=20)
-        except:
+        except Exception as e:
+            # raise e
             print("Failed plotting")
 
         return fig, axes

@@ -12,7 +12,9 @@ from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
     get_cells_indices,
 )
+from qdax.core.emitters.cma_pool_emitter import CMAPoolEmitter
 
+from qdax_es.core.containers.novelty_archive import NoveltyArchive
 from qdax_es.core.emitters.evosax_emitter import EvosaxEmitterAll
 
 from qdax_es.core.emitters.evosax_base_emitter import EvosaxEmitterState
@@ -84,6 +86,7 @@ class CMAMEEmitter(EvosaxEmitterAll):
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: Optional[ExtraScores],
+        novelty_archive: NoveltyArchive
     ) -> jnp.ndarray:
         """
         Default: Improvement emitter
@@ -97,3 +100,10 @@ class CMAMEEmitter(EvosaxEmitterAll):
             extra_scores=extra_scores,
         )
 
+class CMAMEPoolEmitter(CMAPoolEmitter):
+    @property
+    def evals_per_gen(self):
+        """
+        Evaluate the population in the main loop for 1 emitter state
+        """
+        return self._emitter.evals_per_gen

@@ -357,7 +357,8 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
                 min_bd, 
                 max_bd, 
                 log_scale=True, 
-                ax=axes["B"]
+                ax=axes["B"],
+                colormap="plasma",
                 )
             
             plt.suptitle(title, fontsize=20)

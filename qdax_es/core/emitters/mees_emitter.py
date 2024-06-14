@@ -85,7 +85,7 @@ class MEESEmitter(EvosaxEmitterCenter):
             scoring_fn=scoring_fn,
             restarter=restarter,
         )
-
+        self.novelty_nearest_neighbors = self._config.novelty_nearest_neighbors
         self.ranking_criteria = self._combined_criteria
 
     @partial(
@@ -100,30 +100,6 @@ class MEESEmitter(EvosaxEmitterCenter):
             **state,
             explore_exploit=0,
         ), random_key
-
-    def _combined_criteria(
-        self,
-        emitter_state: EvosaxEmitterState,
-        repertoire: MapElitesRepertoire,
-        genotypes: Genotype,
-        fitnesses: Fitness,
-        descriptors: Descriptor,
-        extra_scores: Optional[ExtraScores],
-    ) -> jnp.ndarray:
-        """
-        NS-ES novelty criteria.
-        """
-
-        novelty = emitter_state.novelty_archive.novelty(
-                    descriptors, self._config.novelty_nearest_neighbors
-                )
-        
-        # Combine novelty and fitness: ratio = 0 for novelty, 1 for fitness
-        ratio = emitter_state.explore_exploit
-
-        scores = fitnesses * ratio + novelty * (1 - ratio)
-
-        return scores
 
     def restart(
         self, 
