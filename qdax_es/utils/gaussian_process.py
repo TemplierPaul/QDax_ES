@@ -10,6 +10,7 @@ import optax
 
 EMPTY_WEIGHT = 1e3
 DEFAULT_X = 10
+EPSILON = 1e-6
 
 learning_rate = 0.01
 optimizer = optax.adam(learning_rate)
@@ -25,6 +26,7 @@ class RBFParams:
         keys = jax.random.split(key, 3)
         sigma = jax.random.uniform(keys[0], minval=0, maxval=1)
         lengthscale = jax.random.uniform(keys[1], minval=0, maxval=1)
+        # lengthscale = 1.0
         obs_noise_sigma = jax.random.uniform(keys[2], minval=0, maxval=1)
         return cls(sigma, lengthscale, obs_noise_sigma)
 
@@ -44,6 +46,8 @@ class GPState(PyTreeNode):
     Kinv: jnp.ndarray
     x: jnp.ndarray = None
     y: jnp.ndarray = None
+    y_min: jnp.ndarray = None
+    y_max: jnp.ndarray = None
     weights: jnp.ndarray = None
     weighted: bool=False 
     mask: jnp.ndarray = None
@@ -65,6 +69,10 @@ class GPState(PyTreeNode):
         default_y = masked_mean(y, mask)
         y = jnp.where(mask, y, default_y)
 
+        # Norm y
+        y_min, y_max = y.min(), y.max()
+        y = (y-y_min) / (y_max - y_min + EPSILON)
+
         weights = jnp.where(
             weighted,
             jnp.where(mask, 1/count, empty_weight), # 1/count is the weight
@@ -79,6 +87,8 @@ class GPState(PyTreeNode):
             Kinv=default_Kinv,
             x=x,
             y=y,
+            y_min=y_min, 
+            y_max=y_max,
             weights=weights,
             weighted=weighted,
             mask=mask
@@ -181,7 +191,7 @@ def get_init_state(gp_state):
         gp_state,
         init_params
         )
-    # jax.debug.print("Valid params: {}", valid_params.sum())
+    jax.debug.print("Valid params: {}", valid_params.sum())
 
     # pick first valid one
     index = jnp.argmax(valid_params)
@@ -208,6 +218,7 @@ def train_gp(gp_state, num_steps):
 def gp_predict(gp_state, x_new):
     Kinv = gp_state.Kinv
     X, Y = gp_state.x, gp_state.y
+    y_min, y_max = gp_state.y_min, gp_state.y_max
     params = gp_state.kernel_params
 
     Y_mean = masked_mean(Y, gp_state.mask)
@@ -219,6 +230,8 @@ def gp_predict(gp_state, x_new):
 
     # compute mean prediction
     f_mean = Y_mean + Kx.T @ Kinv @ Y_norm
+    # scale back
+    f_mean = f_mean * (y_max - y_min + EPSILON) + y_min
 
     # compute variance prediction
     kxx = rbf_kernel(params, x_new, x_new)

@@ -2,7 +2,14 @@ import functools
 from typing import Any, Callable, List, Optional, Union
 
 import brax
-import brax.envs
+from brax.v1.envs import Env, _envs
+from brax.v1.envs.wrappers import (
+    AutoResetWrapper,
+    EpisodeWrapper,
+    EvalWrapper,
+    VectorWrapper,
+)
+
 
 from qdax.environments.base_wrappers import QDEnv, StateDescriptorResetWrapper
 from qdax.environments.bd_extractors import (
@@ -145,20 +152,20 @@ def create_no_legacy(
     fixed_init_state: bool = False,
     qdax_wrappers_kwargs: Optional[List] = None,
     **kwargs: Any,
-) -> Union[brax.envs.env.Env, QDEnv]:
+) -> Union[Env, QDEnv]:
     """Creates an Env with a specified brax system.
     Please use namespace to avoid confusion between this function and
     brax.envs.create.
     """
 
-    if env_name in brax.envs._envs.keys():
-        env = brax.envs._envs[env_name](legacy_spring=False, **kwargs)
+    if env_name in _envs.keys():
+        env = _envs[env_name](legacy_spring=False, **kwargs)
     elif env_name in _qdax_envs.keys():
         env = _qdax_envs[env_name](**kwargs)
     elif env_name in _qdax_custom_envs.keys():
         base_env_name = _qdax_custom_envs[env_name]["env"]
-        if base_env_name in brax.envs._envs.keys():
-            env = brax.envs._envs[base_env_name](legacy_spring=False, **kwargs)
+        if base_env_name in _envs.keys():
+            env = _envs[base_env_name](legacy_spring=False, **kwargs)
         elif base_env_name in _qdax_envs.keys():
             env = _qdax_envs[base_env_name](**kwargs)  # type: ignore
 
@@ -176,9 +183,9 @@ def create_no_legacy(
             env = wrapper(env, base_env_name, **kwargs)  # type: ignore
 
     if episode_length is not None:
-        env = brax.envs.wrappers.EpisodeWrapper(env, episode_length, action_repeat)
+        env = EpisodeWrapper(env, episode_length, action_repeat)
     if batch_size:
-        env = brax.envs.wrappers.VectorWrapper(env, batch_size)
+        env = VectorWrapper(env, batch_size)
     if fixed_init_state:
         # retrieve the base env
         if env_name not in _qdax_custom_envs.keys():
@@ -186,11 +193,11 @@ def create_no_legacy(
         # wrap the env
         env = FixedInitialStateWrapper(env, base_env_name=base_env_name)  # type: ignore
     if auto_reset:
-        env = brax.envs.wrappers.AutoResetWrapper(env)
+        env = AutoResetWrapper(env)
         if env_name in _qdax_custom_envs.keys():
             env = StateDescriptorResetWrapper(env)
     if eval_metrics:
-        env = brax.envs.wrappers.EvalWrapper(env)
+        env = EvalWrapper(env)
         env = CompletedEvalWrapper(env)
 
     return env

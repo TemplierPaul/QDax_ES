@@ -79,6 +79,7 @@ class JEDiEmitter(EvosaxEmitterAll):
         ]=None,
         restarter = None,
         wtfs_alpha = 0.5,
+        global_norm=False,
     ):
         """
         Initialize the ES emitter.
@@ -100,9 +101,9 @@ class JEDiEmitter(EvosaxEmitterAll):
             scoring_fn=scoring_fn,
             restarter=restarter,
         )
-
-        # self.ranking_criteria = self._wtfs_criteria
-        self.ranking_criteria = self._global_wtfs_criteria
+        self.ranking_criteria = self._wtfs_criteria
+        if global_norm:
+            self.ranking_criteria = self._global_wtfs_criteria
         self.wtfs_alpha = wtfs_alpha
         self.restart = self._jedi_restart
 

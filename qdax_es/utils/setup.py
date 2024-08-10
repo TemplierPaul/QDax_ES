@@ -1,3 +1,4 @@
+import functools
 
 import jax
 import jax.numpy as jnp
@@ -8,8 +9,16 @@ from qdax.tasks.brax_envs import (
     make_policy_network_play_step_fn_brax,
     reset_based_scoring_function_brax_envs,
 )
-import functools
+from qdax import environments
 
+from qdax_es.utils.env_bd import get_bd_bounds
+from qdax_es.core.containers.count_repertoire import CountMapElitesRepertoire, count_qd_metrics
+from qdax_es.core.custom_repertoire_mapelites import CustomMAPElites
+
+from qdax.core.containers.mapelites_repertoire import (
+    MapElitesRepertoire,
+    compute_cvt_centroids,
+)
 
 def create_task(config, random_key):
     if "kheperax" in config["env"]:
@@ -83,7 +92,7 @@ def create_task(config, random_key):
             
         seeds = jax.random.split(random_key, num=10)
         init_states = jax.vmap(play_reset_fn)(seeds)
-        print(init_states.obs)
+        # print(init_states.obs)
 
         # Prepare the scoring function
         from qdax_es.environments import get_qd_params
@@ -101,3 +110,50 @@ def create_task(config, random_key):
         )
 
         return env, policy_network, scoring_fn, qd_offset
+    
+
+def setup_qd(config):
+    random_key = jax.random.PRNGKey(config["seed"])
+
+    (
+        env,
+        policy_network,
+        scoring_fn,
+        reward_offset
+    ) = create_task(
+        config, 
+        random_key=random_key,
+    )
+
+    bd_bounds = get_bd_bounds(config["env"], n_dim=env.behavior_descriptor_length)
+    min_bd = bd_bounds["minval"]
+    max_bd = bd_bounds["maxval"]
+
+
+    config["video_recording"] = {
+        "env": env,
+        "policy_network": policy_network,
+    }
+
+    # Init population of controllers
+    random_key, subkey = jax.random.split(random_key)
+    keys = jax.random.split(subkey, num=config["initial_batch"])
+    fake_batch = jnp.zeros(shape=(config["initial_batch"], env.observation_size))
+    init_variables = jax.vmap(policy_network.init)(keys, fake_batch)
+
+    metrics_function = functools.partial(
+        count_qd_metrics,
+        qd_offset=reward_offset,
+    )
+
+    # Compute the centroids
+    centroids, random_key = compute_cvt_centroids(
+        num_descriptors=env.behavior_descriptor_length,
+        num_init_cvt_samples=config["num_init_cvt_samples"],
+        num_centroids=config["num_centroids"],
+        minval=min_bd,
+        maxval=max_bd,
+        random_key=random_key,
+    )
+
+    return centroids, min_bd, max_bd, scoring_fn, metrics_function, init_variables, random_key

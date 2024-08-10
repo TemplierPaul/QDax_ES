@@ -110,7 +110,7 @@ class UniformJEDiPoolEmitter(Emitter):
         # jax.debug.print("new_sub_emitter_state: {}", net_shape(new_sub_emitter_state))
 
         need_restart = jnp.any(jnp.array(need_train_gp))
-        jax.debug.print("need_restart: {}", need_train_gp.sum())
+        # jax.debug.print("need_restart: {}", need_train_gp.sum())
 
         target_bd_indices = self.get_target_bd_indices(
             repertoire=repertoire,
