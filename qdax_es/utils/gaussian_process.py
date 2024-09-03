@@ -114,7 +114,7 @@ def compute_K(params, X, weights):
     """Compute the kernel matrix K using vmap"""
     # K = jax.vmap(rbf_kernel, in_axes=(None, 0, 1))(params, X, X)
     K = jax.vmap(lambda x1: jax.vmap(lambda x2: rbf_kernel(params, x1, x2))(X))(X)
-    return K #+ params.obs_noise_sigma**2 * weights #+ EPSILON * jnp.eye(X.shape[0])
+    return K + params.obs_noise_sigma**2 * weights #+ EPSILON * jnp.eye(X.shape[0])
 
 @jit
 def compute_Kinv(gp_state):
@@ -134,20 +134,22 @@ def neg_marginal_likelihood(params, X, Y, weights):
     # Cholesky decomposition
     L = jnp.linalg.cholesky(K)
     Kinv = jnp.linalg.solve(L.T, jnp.linalg.solve(L, jnp.eye(X.shape[0])))
+    # jax.debug.print("Kinv nan {}", jnp.isnan(Kinv).sum())
     
     Y_mean = jnp.mean(Y)
     Y_norm = Y - Y_mean
-    jax.debug.print("Mean {}, new mean {}", Y_mean, jnp.mean(Y_norm))
+    # jax.debug.print("Mean {}, new mean {}", Y_mean, jnp.mean(Y_norm))
+    # jax.debug.print("Y_norm {}", Y_norm)
 
     data_fit = Y_norm.T @ Kinv @ Y_norm
-    jax.debug.print("Data fit {}", data_fit)
+    # jax.debug.print("Data fit {}", data_fit)
 
     complexity_penalty = jnp.log(jnp.linalg.det(K))
-    jax.debug.print("Complexity penalty {}", complexity_penalty)
+    # jax.debug.print("Complexity penalty {}", complexity_penalty)
     # n = jnp.sum(1/jnp.diag(weights))
     # constant_term = n * jnp.log(2 * jnp.pi)
     constant_term = jnp.trace(K) 
-    jax.debug.print("Constant term {}", constant_term)
+    # jax.debug.print("Constant term {}", constant_term)
 
     log_marginal_likelihood = -0.5 * (data_fit + complexity_penalty + constant_term)
     return - log_marginal_likelihood

@@ -51,7 +51,7 @@ sigma_g = .05
 pool_size = 4
 es_gens = 100
 wtfs_alpha = 0.7
-weighted_gp = True
+weighted_gp = False
 
 batch_size = es_pop * pool_size
 print("batch_size", batch_size)
