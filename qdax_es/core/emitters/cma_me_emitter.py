@@ -6,7 +6,7 @@ from typing import Optional, Tuple, Callable
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,

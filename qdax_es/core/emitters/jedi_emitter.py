@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 from jax.tree_util import tree_map
 
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -108,11 +108,24 @@ class JEDiEmitter(EvosaxEmitterAll):
         self.restart = self._jedi_restart
 
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey,       
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,       
     ):
-        state, random_key = super().init(init_genotypes, random_key)
+        emitter_state, random_key = super().init(
+            random_key=random_key,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            extra_scores=extra_scores,
+        )
         return JEDiEmitterState(
-            **state.__dict__,
+            **emitter_state.__dict__,
             wtfs_alpha=self.wtfs_alpha,
             wtfs_target=jnp.zeros(self._centroids.shape[1]),
         ), random_key
@@ -249,6 +262,9 @@ class JEDiEmitter(EvosaxEmitterAll):
             lambda x: x,
             emitter_state
         )
+
+        # print wtfs_target
+        # jax.debug.print("wtfs_target: {}", emitter_state.wtfs_target)
 
         random_key, subkey = jax.random.split(emitter_state.random_key)
         emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)

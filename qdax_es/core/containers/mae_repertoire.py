@@ -17,7 +17,7 @@ from numpy.random import RandomState
 from sklearn.cluster import KMeans
 
 from qdax.core.containers.mapelites_repertoire import get_cells_indices, MapElitesRepertoire
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 from qdax_es.core.containers.count_repertoire import CountMapElitesRepertoire
 
@@ -149,7 +149,7 @@ class MAERepertoire(CountMapElitesRepertoire):
 
         # put dominated fitness to -jnp.inf
         batch_of_fitnesses = jnp.where(
-            batch_of_fitnesses == cond_values, x=batch_of_fitnesses, y=-jnp.inf
+            batch_of_fitnesses == cond_values, batch_of_fitnesses, -jnp.inf
         )
 
         # get addition condition
@@ -158,13 +158,13 @@ class MAERepertoire(CountMapElitesRepertoire):
             repertoire_thresholds, batch_of_indices, 0
         )
         current_thresholds = jnp.where(
-            jnp.isinf(current_thresholds_with_inf), x=-jnp.inf, y=current_thresholds_with_inf
+            jnp.isinf(current_thresholds_with_inf), -jnp.inf, current_thresholds_with_inf
         )
         addition_condition = batch_of_fitnesses > current_thresholds
 
         # assign fake position when relevant : num_centroids is out of bound
         batch_of_indices = jnp.where(
-            addition_condition, x=batch_of_indices, y=num_centroids
+            addition_condition, batch_of_indices, num_centroids
         )
 
         # create new repertoire
@@ -182,7 +182,7 @@ class MAERepertoire(CountMapElitesRepertoire):
         )
 
         previous_thresholds = self.thresholds.at[batch_of_indices.squeeze(axis=-1)].get()
-        updated_thresholds = jnp.where(jnp.isinf(previous_thresholds), x=batch_of_fitnesses.squeeze(axis=-1), y=previous_thresholds)
+        updated_thresholds = jnp.where(jnp.isinf(previous_thresholds), batch_of_fitnesses.squeeze(axis=-1), previous_thresholds)
         updated_thresholds = updated_thresholds * (1. - self.archive_learning_rate) + batch_of_fitnesses.squeeze(axis=-1) * self.archive_learning_rate
 
         new_thresholds = self.thresholds.at[batch_of_indices.squeeze(axis=-1)].set(

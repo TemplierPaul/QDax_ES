@@ -1,3 +1,6 @@
 examples/plots/*
 examples/plots/*.png
 *.pyc
+apptainer/tmp/*
+apptainer/var_tmp/* 
+plots/*

@@ -10,7 +10,7 @@ import jax
 import jax.numpy as jnp
 from jax.flatten_util import ravel_pytree
 
-from qdax.types import (
+from qdax.custom_types import (
     Centroid,
     Descriptor,
     ExtraScores,
@@ -151,7 +151,7 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
 
         # put dominated fitness to -jnp.inf
         batch_of_fitnesses = jnp.where(
-            batch_of_fitnesses == cond_values, x=batch_of_fitnesses, y=-jnp.inf
+            batch_of_fitnesses == cond_values, batch_of_fitnesses, -jnp.inf
         )
 
         # get addition condition
@@ -163,7 +163,7 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
 
         # assign fake position when relevant : num_centroids is out of bound
         batch_of_indices = jnp.where(
-            addition_condition, x=batch_of_indices, y=num_centroids
+            addition_condition, batch_of_indices, num_centroids
         )
 
         # create new repertoire

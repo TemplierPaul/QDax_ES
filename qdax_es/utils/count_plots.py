@@ -179,7 +179,7 @@ def plot_2d_count(
         maxval=max_bd,
         repertoire_descriptors=repertoire.descriptors,
         ax=ax,
-        # title=title,
+        title=title,
         vmin=vmin,
         vmax=vmax,
         colormap=colormap,

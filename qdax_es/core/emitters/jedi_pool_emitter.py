@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np 
 
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -54,7 +54,13 @@ class UniformJEDiPoolEmitter(Emitter):
         return self.emitter.batch_size * self.pool_size
 
     def init(
-        self, init_genotypes: Optional[Genotype], random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[Optional[MultiESEmitterState], RNGKey]:
         
         # prepare keys for each emitter
@@ -63,9 +69,14 @@ class UniformJEDiPoolEmitter(Emitter):
 
         emitter_states, keys = jax.vmap(
             self.emitter.init,
-            in_axes=(None, 0)
+            in_axes=(0, None, None, None, None, None)
         )(
-            init_genotypes, subkeys
+            subkeys,
+            repertoire,
+            genotypes,
+            fitnesses,
+            descriptors,
+            extra_scores,
         )
 
         emitter_state = MultiESEmitterState(emitter_states)
@@ -111,13 +122,13 @@ class UniformJEDiPoolEmitter(Emitter):
 
         need_restart = jnp.any(jnp.array(need_train_gp))
         # jax.debug.print("need_restart: {}", need_train_gp.sum())
-
         target_bd_indices = self.get_target_bd_indices(
             repertoire=repertoire,
             need_restart=need_restart,
             emitter_state = new_sub_emitter_state,
             )
-
+        # jax.debug.print("target BD indices: {}", target_bd_indices)
+        
         final_emitter_states = jax.vmap(
             lambda i, state, restart: self.emitter.finish_state_update(state, repertoire, restart, i),
             in_axes=(0, 0, 0)
@@ -160,7 +171,7 @@ class UniformJEDiPoolEmitter(Emitter):
         # jax.debug.print("emitter_states: {}", net_shape(emitter_state.emitter_states))
 
         # vmap
-        all_offsprings, keys = jax.vmap(
+        all_offsprings, _, keys = jax.vmap(
             lambda s, k: self.emitter.emit(repertoire, s, k),
             in_axes=(0, 0))(
             emitter_state.emitter_states,
@@ -177,7 +188,7 @@ class UniformJEDiPoolEmitter(Emitter):
 
         # jax.debug.print("offspring batch: {}", net_shape(offsprings))
 
-        return offsprings, random_key
+        return offsprings, {}, random_key
     
     def get_target_bd_indices(
         self,
@@ -238,6 +249,7 @@ class GPJEDiPoolEmitter(UniformJEDiPoolEmitter):
         """
         Train the GP and select targets on the pareto front if it needs to be trained, else call from the parent class
         """
+        # jax.debug.print("need_restart: {}", need_restart)
         return jax.lax.cond(
             need_restart,
             lambda x: self.train_select(repertoire, emitter_state),

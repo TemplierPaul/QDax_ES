@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np 
 
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -89,9 +89,9 @@ class MEMESEmitter(EvosaxEmitterCenter):
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
-        self, init_genotypes: Optional[Genotype], random_key: RNGKey, explore_exploit:int=0
+        self, genotypes: Optional[Genotype], random_key: RNGKey, explore_exploit:int=0
     ) -> Tuple[Optional[MultiESEmitterState], RNGKey]:
-        state, random_key = super().init(init_genotypes, random_key)
+        state, random_key = super().init(genotypes, random_key)
         return MEMESEmitterState(
             **state,
             explore_exploit=explore_exploit,
@@ -125,7 +125,13 @@ class MEMESPoolEmitter(Emitter):
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
-        self, init_genotypes: Optional[Genotype], random_key: RNGKey
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[Optional[MultiESEmitterState], RNGKey]:
         # prepare keys for each emitter
         random_key, subkey = jax.random.split(random_key)
@@ -140,9 +146,14 @@ class MEMESPoolEmitter(Emitter):
 
         emitter_states, keys = jax.vmap(
             self.emitter.init,
-            in_axes=(None, 0, 0)
+            in_axes=(0, None, None, None, None, None)
         )(
-            init_genotypes, subkeys, explore_exploit
+            subkeys,
+            repertoire,
+            genotypes,
+            fitnesses,
+            descriptors,
+            extra_scores,
         )
 
         emitter_state = MultiESEmitterState(emitter_states)
@@ -177,7 +188,7 @@ class MEMESPoolEmitter(Emitter):
         # jax.debug.print("emitter_states: {}", net_shape(emitter_state.emitter_states))
 
         # vmap
-        all_offsprings, keys = jax.vmap(
+        all_offsprings, _, keys = jax.vmap(
             lambda s, k: self.emitter.emit(repertoire, s, k),
             in_axes=(0, 0))(
             emitter_state.emitter_states,
@@ -194,7 +205,7 @@ class MEMESPoolEmitter(Emitter):
 
         # jax.debug.print("offspring batch: {}", net_shape(offsprings))
 
-        return offsprings, random_key
+        return offsprings, {}, random_key
     
 
     @partial(jax.jit, static_argnames=("self",))

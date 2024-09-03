@@ -6,7 +6,7 @@ from typing import Optional, Tuple, Callable
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -58,10 +58,23 @@ class CMAMEAnnealingEmitter(CMAMEEmitter):
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey,
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ) -> Tuple[EvosaxEmitterState, RNGKey]:
         
-        emitter_state, random_key = super().init(init_genotypes, random_key)
+        emitter_state, random_key = super().init(
+            random_key=random_key,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            extra_scores=extra_scores,
+        )
         
         default_thresholds = jnp.ones(self._centroids.shape[0]) * self.min_threshold
         emitter_state = emitter_state.replace(previous_fitnesses=default_thresholds)

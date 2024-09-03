@@ -7,7 +7,7 @@ import jax
 from qdax.core.containers.mapelites_repertoire import MapElitesRepertoire
 
 from qdax.core.emitters.emitter import Emitter, EmitterState
-from qdax.types import (
+from qdax.custom_types import (
     Centroid,
     Descriptor,
     ExtraScores,
@@ -39,7 +39,7 @@ class CustomMAPElites(MAPElites):
     # @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
-        init_genotypes: Genotype,
+        genotypes: Genotype,
         centroids: Centroid,
         random_key: RNGKey,
         repertoire_kwargs: Optional[dict] = {},
@@ -50,7 +50,7 @@ class CustomMAPElites(MAPElites):
         such as CVT or Euclidean mapping.
 
         Args:
-            init_genotypes: initial genotypes, pytree in which leaves
+            genotypes: initial genotypes, pytree in which leaves
                 have shape (batch_size, num_features)
             centroids: tesselation centroids of shape (batch_size, num_descriptors)
             random_key: a random key used for stochastic operations.
@@ -61,12 +61,12 @@ class CustomMAPElites(MAPElites):
         """
         # score initial genotypes
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
-            init_genotypes, random_key
+            genotypes, random_key
         )
 
         # init the repertoire
         repertoire = self.repertoire_type.init(
-            genotypes=init_genotypes,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
             centroids=centroids,
@@ -76,14 +76,19 @@ class CustomMAPElites(MAPElites):
 
         # get initial state of the emitter
         emitter_state, random_key = self._emitter.init(
-            init_genotypes=init_genotypes, random_key=random_key
+            random_key=random_key,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            extra_scores=extra_scores,
         )
 
         # update emitter state
         emitter_state = self._emitter.state_update(
             emitter_state=emitter_state,
             repertoire=repertoire,
-            genotypes=init_genotypes,
+            genotypes=genotypes,
             fitnesses=fitnesses,
             descriptors=descriptors,
             extra_scores=extra_scores,

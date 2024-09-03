@@ -7,7 +7,7 @@ from abc import abstractmethod
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 from qdax.core.emitters.emitter import Emitter, EmitterState
 from qdax.core.emitters.cma_emitter import CMAEmitter, CMAEmitterState
 
@@ -108,13 +108,19 @@ class EvosaxEmitter(Emitter):
         static_argnames=("self",),
     )
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey, 
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,
     ):
         """
         Initializes the ES emitter
 
         Args:
-            init_genotypes: initial genotypes to add to the grid.
+            genotypes: initial genotypes to add to the grid.
             random_key: a random key to handle stochastic operations.
 
         Returns:
@@ -123,17 +129,17 @@ class EvosaxEmitter(Emitter):
         restart_state = self.restarter.init()
 
         # Check if initial genotypes are ANNs or vectors
-        if isinstance(init_genotypes, jnp.ndarray):
+        if isinstance(genotypes, jnp.ndarray):
             print("Using DummyReshaper")
             self.reshaper = DummyReshaper()
         else:
             print("Using ANNReshaper")
-            if jax.tree_util.tree_leaves(init_genotypes)[0].shape[0] > 1:
-                init_genotypes = jax.tree_util.tree_map(
+            if jax.tree_util.tree_leaves(genotypes)[0].shape[0] > 1:
+                genotypes = jax.tree_util.tree_map(
                     lambda x: x[0],
-                    init_genotypes,
+                    genotypes,
                 )
-            self.reshaper = ANNReshaper.init(init_genotypes)
+            self.reshaper = ANNReshaper.init(genotypes)
 
         self.es = Strategies[self.es_type](
             num_dims=self.reshaper.genotype_dim,
@@ -390,13 +396,13 @@ class EvosaxEmitter(Emitter):
         condition = improvements == jnp.inf
 
         # criteria: fitness if new cell, improvement else
-        ranking_criteria = jnp.where(condition, x=fitnesses, y=improvements)
+        ranking_criteria = jnp.where(condition, fitnesses, improvements)
 
         # make sure to have all the new cells first
         new_cell_offset = jnp.max(ranking_criteria) - jnp.min(ranking_criteria)
 
         ranking_criteria = jnp.where(
-            condition, x=ranking_criteria + new_cell_offset, y=ranking_criteria
+            condition, ranking_criteria + new_cell_offset, ranking_criteria
         )
 
         return ranking_criteria

@@ -4,7 +4,7 @@ from jax import jit
 import optax 
 from functools import partial
 from flax.struct import dataclass as fdataclass
-from qdax.types import (
+from qdax.custom_types import (
     Centroid,
     Descriptor,
     ExtraScores,
@@ -84,7 +84,8 @@ class GPRepertoire(CountMapElitesRepertoire):
 
     @partial(jit, static_argnames=("n_steps",))
     def fit_gp(self, n_steps: int = 1000):
-        fit_gp_state = train_gp(self.gp_state, num_steps=n_steps)
+        gp_state = GPState.init_from_repertoire(self, self.gp_state.weighted)
+        fit_gp_state = train_gp(gp_state, num_steps=n_steps)
         return self.replace(gp_state=fit_gp_state)
 
     @jit
@@ -118,7 +119,7 @@ class GPRepertoire(CountMapElitesRepertoire):
                 figsize=(20, 8),
             )
         try:
-            axes["A"] = plot_2d_map_elites_repertoire(
+            _, axes["A"] = plot_2d_map_elites_repertoire(
                 centroids=self.centroids,
                 repertoire_fitnesses=self.fitnesses,
                 minval=min_bd,
@@ -139,7 +140,7 @@ class GPRepertoire(CountMapElitesRepertoire):
                 # print(f"Plot GP LS: {self.gp_params.lengthscale}")
                 means, covs = self.batch_predict(self.centroids)
 
-                axes["C"] = plot_archive_value(
+                _, axes["C"] = plot_archive_value(
                     self, 
                     means, 
                     min_bd, 
@@ -147,7 +148,7 @@ class GPRepertoire(CountMapElitesRepertoire):
                     ax=axes["C"],
                     title="GP mean"
                 )
-                axes["D"] = plot_archive_value(
+                _, axes["D"] = plot_archive_value(
                     self, 
                     covs, 
                     min_bd, 

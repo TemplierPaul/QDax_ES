@@ -26,7 +26,7 @@ def create_task(config, random_key):
         from kheperax.target import TargetKheperaxConfig
         from kheperax.quad_task import QuadKheperaxConfig
 
-        map_name = config["env"].replace("kheperax_", "")
+        map_name = config["env"].replace("kheperax_", "").replace("kheperax-", "")
         # Define Task configuration
         if "quad_" in map_name:
             base_map_name = map_name.replace("quad_", "")

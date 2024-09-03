@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
@@ -93,9 +93,22 @@ class MEESEmitter(EvosaxEmitterCenter):
         static_argnames=("self",),
     )
     def init(
-        self, init_genotypes: Genotype, random_key: RNGKey,       
+        self,
+        random_key: RNGKey,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: ExtraScores,      
     ):
-        state, random_key = super().init(init_genotypes, random_key)
+        emitter_state, random_key = super().init(
+            random_key=random_key,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            extra_scores=extra_scores,
+        )
         return MEESEmitterState(
             **state,
             explore_exploit=0,

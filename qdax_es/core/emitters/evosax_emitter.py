@@ -6,7 +6,7 @@ from typing import Optional, Tuple, Callable
 import jax
 import jax.numpy as jnp
 
-from qdax.types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 from qdax.core.emitters.emitter import Emitter, EmitterState
 
 
@@ -51,7 +51,7 @@ class EvosaxEmitterAll(EvosaxEmitter):
         
         offspring, random_key = self.es_ask(emitter_state, random_key)
 
-        return offspring, random_key
+        return offspring, {}, random_key
     
     @partial(jax.jit, static_argnames=("self",))
     def state_update(
@@ -116,7 +116,16 @@ class EvosaxEmitterAll(EvosaxEmitter):
             emitter_state,
             scores
         )
-        restart_bool = self.restarter.restart_criteria(emitter_state, scores)
+        restart_bool = self.restarter.restart_criteria(
+            emitter_state=emitter_state,
+            scores=scores,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            extra_scores=extra_scores,
+            novelty_archive=emitter_state.novelty_archive,
+        )
         return emitter_state, restart_bool
 
     def finish_state_update(
@@ -174,7 +183,7 @@ class EvosaxEmitterCenter(EvosaxEmitter):
         es_center = emitter_state.es_state.strategy_state.mean
         offspring = self.reshaper.unflatten(es_center)
 
-        return offspring, random_key
+        return offspring, {}, random_key
     
     @partial(jax.jit, static_argnames=("self",))
     def _external_novelty_state_update(
@@ -224,7 +233,16 @@ class EvosaxEmitterCenter(EvosaxEmitter):
             scores
         )
         
-        restart_bool = self.restarter.restart_criteria(emitter_state, scores)
+        restart_bool = self.restarter.restart_criteria(
+            emitter_state=emitter_state,
+            scores=scores,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            extra_scores=extra_scores,
+            novelty_archive=emitter_state.novelty_archive,
+        )
 
         emitter_state = jax.lax.cond(
             restart_bool,

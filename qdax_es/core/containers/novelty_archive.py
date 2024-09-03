@@ -7,7 +7,7 @@ import jax
 import jax.numpy as jnp
 
 # from qdax.core.containers.mapelites_repertoire import ESRepertoire
-from qdax.types import Descriptor
+from qdax.custom_types import Descriptor
 
 class DummyNoveltyArchive(flax.struct.PyTreeNode):
     """
