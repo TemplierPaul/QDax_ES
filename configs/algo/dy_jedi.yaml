@@ -1,0 +1,6 @@
+defaults:
+  - jedi # Inherit all settings from kheperax_base.yaml
+  - _self_ # Allow overriding inherited values
+
+restarter:
+  type: DualConvergenceRestarter

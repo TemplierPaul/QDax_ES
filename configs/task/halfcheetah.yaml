@@ -1,0 +1,18 @@
+seed: 42
+env_name: halfcheetah_uni
+episode_length: 500
+stochastic: false
+total_evaluations: 5e6
+
+network:
+  policy_hidden_layer_sizes: [256, 256]
+  activation: tanh
+
+es_params:
+  sigma_init: 0.05
+  popsize: 256
+  es_type: LM_MA_ES
+
+jedi:
+  alpha: 0.5
+  gens: 100

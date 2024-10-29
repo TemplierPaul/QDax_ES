@@ -1,0 +1,5 @@
+algo: es
+
+archive:
+  num_init_cvt_samples: 50000
+  num_centroids: 1025

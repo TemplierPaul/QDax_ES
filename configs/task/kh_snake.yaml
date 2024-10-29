@@ -1,0 +1,10 @@
+defaults:
+  - kh_standard # Inherit all settings from kheperax_base.yaml
+  - _self_ # Allow overriding inherited values
+
+env_name: kheperax_snake
+total_evaluations: 1e6
+
+jedi:
+  alpha: 0.3
+  gens: 100

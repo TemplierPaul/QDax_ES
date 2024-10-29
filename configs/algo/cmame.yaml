@@ -1,0 +1,14 @@
+algo: cmame
+pool_size: 4
+
+emitter_type: imp # imp, opt, rnd
+
+annealing: 
+  use_mae: false
+  min_threshold: -100
+  archive_learning_rate: 0.01
+
+archive:
+  num_init_cvt_samples: 5000
+  num_centroids: 1025
+

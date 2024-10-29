@@ -1,0 +1,18 @@
+seed: 42
+env_name: walker2d_uni
+episode_length: 1000
+stochastic: false
+total_evaluations: 1e7
+
+network:
+  policy_hidden_layer_sizes: [256, 256]
+  activation: tanh
+
+es_params:
+  sigma_init: 0.05
+  popsize: 256
+  es_type: LM_MA_ES
+
+jedi:
+  alpha: 0.3
+  gens: 1000

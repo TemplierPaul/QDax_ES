@@ -1,7 +1,13 @@
 --find-links https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-jax[cuda12_pip]==0.4.28
+qdax[cuda12]
+# jax[cuda12_pip]==0.4.28
 evosax==0.1.6
 notebook
+# kheperax
+hydra-core
+
+
+# pip install hydra-core
 # optax==0.1.7
 # scipy==1.8.0
 

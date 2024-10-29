@@ -1,0 +1,15 @@
+hydra:
+  job:
+    chdir: True
+  run:
+    dir: ./output/${now:%Y-%m-%d_%H%M%S_%f}
+
+defaults:
+  - algo: jedi
+  - task: kh_pointmaze
+  - _self_
+
+
+steps: 10
+seed: 42
+plots_dir: plots

@@ -1,0 +1,15 @@
+algo: jedi
+pool_size: 4
+global_norm: false
+
+restarter:
+  type: FixedGens
+
+gp:
+  n_steps: 1000
+  weighted: false
+
+archive:
+  num_init_cvt_samples: 5000
+  num_centroids: 1025
+

@@ -4,3 +4,8 @@ examples/plots/*.png
 apptainer/tmp/*
 apptainer/var_tmp/* 
 plots/*
+output/*
+*.err
+*.out
+*.egg-info
+.venv/*

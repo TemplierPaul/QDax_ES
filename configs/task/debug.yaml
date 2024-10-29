@@ -1,0 +1,11 @@
+defaults:
+  - kh_standard # Inherit all settings from standard.yaml
+  - _self_ # Allow overriding inherited values
+
+env_name: kheperax_pointmaze
+total_evaluations: 1e4
+
+jedi:
+  alpha: 0.3
+  gens: 10
+
