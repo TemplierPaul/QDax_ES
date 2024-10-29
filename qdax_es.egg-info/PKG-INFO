@@ -1,12 +1,13 @@
 Metadata-Version: 2.1
-Name: qdax_es
-Version: 0.3.0
+Name: qdax-es
+Version: 0.1.0
 Summary: QDax with Evosax integration
 Home-page: https://github.com/TemplierPaul/QDax_ES
 Author: Paul Templier
 Author-email: templier.paul@gmail.com
 License: MIT
 Keywords: Evolution Strategies,Quality-Diversity,NeuroEvolution,Reinforcement Learning,JAX
+Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta
 Classifier: Environment :: Console
 Classifier: Intended Audience :: Science/Research
@@ -18,3 +19,4 @@ Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
 Description-Content-Type: text/markdown
 
 QDax with Evosax integration
+

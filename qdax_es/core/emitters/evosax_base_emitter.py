@@ -288,6 +288,8 @@ class EvosaxEmitter(Emitter):
         es_state = emitter_state.es_state
         es_params = emitter_state.es_params
 
+        fitnesses = - jnp.array(fitnesses) # Maximise
+
         new_es_state = self.es.tell(genomes, fitnesses, es_state, es_params)
 
         return emitter_state.replace(
@@ -415,8 +417,8 @@ class EvosaxEmitter(Emitter):
             random_key=random_key, previous_fitnesses=repertoire.fitnesses
         )
     
+    # @partial(jax.jit, static_argnames=("self",))
     @abstractmethod
-    @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Optional[MapElitesRepertoire],
@@ -429,8 +431,8 @@ class EvosaxEmitter(Emitter):
         pass
 
 
+    # @partial(jax.jit, static_argnames=("self",))
     @abstractmethod
-    @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: EvosaxEmitterState,

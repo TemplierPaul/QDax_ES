@@ -22,7 +22,7 @@ class DummyNoveltyArchive(flax.struct.PyTreeNode):
     def update(self, descriptor: Descriptor) -> DummyNoveltyArchive:
         return self
 
-    @partial(jax.jit, static_argnames=("num_nearest_neighbors",))
+    # @partial(jax.jit, static_argnames=("num_nearest_neighbors",))
     def novelty(
         self,
         descriptors: Descriptor,
@@ -77,7 +77,7 @@ class NoveltyArchive(flax.struct.PyTreeNode):
             archive=new_archive, size=self.size, position=new_position
         )
 
-    @partial(jax.jit, static_argnames=("num_nearest_neighbors",))
+    # @partial(jax.jit, static_argnames=("num_nearest_neighbors",))
     def novelty(
         self,
         descriptors: Descriptor,

@@ -46,6 +46,9 @@ class DummyRestarter:
         Check if the restart condition is met.
         """
         return False
+
+    def reset(self, emitter_state):
+        return emitter_state.replace(restart_state=self.init())
     
 
 class FixedGens(DummyRestarter):
@@ -85,7 +88,6 @@ class FixedGens(DummyRestarter):
         gens = emitter_state.restart_state.generations
         
         return jax.numpy.where(gens >= self.max_gens, True, False)
-
 
 class ConvergenceRestarter(FixedGens):
     """
@@ -150,7 +152,7 @@ class DualConvergenceRestarter(FixedGens):
         converged_bd = jnp.all(bd_spread < self.min_bd_spread)
         converged = jnp.logical_and(converged_fit, converged_bd)
         return jnp.logical_or(max_gens, jnp.logical_and(min_gens, converged))
-    
+
 
 class CMARestarter(FixedGens):
     """

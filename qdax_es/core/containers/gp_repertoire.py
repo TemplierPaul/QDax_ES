@@ -23,7 +23,6 @@ from qdax_es.utils.gaussian_process import GPState, train_gp, gp_predict, gp_bat
 
 class GPRepertoire(CountMapElitesRepertoire):
     gp_state: GPState = None
-    n_steps: int = 1000
     
     @classmethod
     def init(
@@ -34,7 +33,6 @@ class GPRepertoire(CountMapElitesRepertoire):
         centroids: Centroid,
         extra_scores: Optional[ExtraScores] = None,
         weighted: bool = False,
-        n_steps: int = 1000,
     ) -> CountMapElitesRepertoire:
         """Initialize a repertoire"""
         repertoire = super().init(
@@ -45,9 +43,8 @@ class GPRepertoire(CountMapElitesRepertoire):
             extra_scores=extra_scores,
         )
         gp_state = GPState.init_from_repertoire(repertoire, weighted)
-        return repertoire.replace(gp_state=gp_state, n_steps=n_steps)
+        return repertoire.replace(gp_state=gp_state)
 
-   
     @jit
     def add(
         self,
@@ -66,7 +63,6 @@ class GPRepertoire(CountMapElitesRepertoire):
         # set ls_scaler
         return new_repertoire.replace(
             gp_state=self.gp_state,
-            n_steps=self.n_steps
         )
     
     @jit
@@ -79,7 +75,6 @@ class GPRepertoire(CountMapElitesRepertoire):
         # set ls_scaler
         return new_repertoire.replace(
             gp_state=self.gp_state,
-            n_steps=self.n_steps
         )
 
     @partial(jit, static_argnames=("n_steps",))

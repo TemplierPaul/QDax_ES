@@ -225,7 +225,9 @@ class JEDiEmitter(EvosaxEmitterAll):
         JEDi emitter with uniform target selection (no GP).
         """
         # Get centroid based on target_bd_index
+
         target_bd = repertoire.centroids[target_bd_index]
+        # jax.debug.print("restart towards: {}", target_bd)
 
         emitter_state = emitter_state.replace(
             wtfs_target=target_bd,
@@ -235,6 +237,8 @@ class JEDiEmitter(EvosaxEmitterAll):
             bd=target_bd,
             repertoire=repertoire,
         )
+        # jax.debug.print("restart from: {}", start_bd)
+
 
         return self.restart_from(
             emitter_state=emitter_state,

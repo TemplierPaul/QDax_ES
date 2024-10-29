@@ -56,7 +56,7 @@ class CMAMEAnnealingEmitter(CMAMEEmitter):
             random_key=random_key, previous_fitnesses=repertoire.thresholds
         )
 
-    @partial(jax.jit, static_argnames=("self",))
+    # @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
         random_key: RNGKey,

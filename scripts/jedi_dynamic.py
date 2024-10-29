@@ -4,6 +4,8 @@ from typing import Dict, Tuple
 
 import os
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.80"
+# Jax floating point precision
+# os.environ["JAX_ENABLE_X64"] = "True"
 
 import matplotlib as mpl
 import matplotlib.cm as cm
@@ -42,34 +44,38 @@ from qdax_es.utils.setup import setup_qd
 # config.update("jax_debug_nans", True)
 
 # ES params
-es_pop = 32
-sigma_g = .1
+es_pop = 16
+sigma_g = .05
 
 # JEDi params
-pool_size = 4 
-es_gens = 10
-wtfs_alpha = 0.3
+pool_size = 4
+es_gens = 100
+wtfs_alpha = 0.5
 weighted_gp = True
 
-batch_size = es_pop * pool_size 
+batch_size = es_pop * pool_size
 print("batch_size", batch_size)
 initial_batch = batch_size
 
-env_name = "kheperax_pointmaze"
+env_name = "kheperax_standard"
 episode_length = 250
+# env_name = "pointmaze"
+# episode_length = 100
 stochastic = False
-total_evaluations = 1e6
+total_evaluations = 5e6
+steps = 10
 seed = 42
-policy_hidden_layer_sizes = (8, )
+policy_hidden_layer_sizes = (8,)
 activation = "relu"
 
 num_init_cvt_samples = 50000
-num_centroids = 100
+num_centroids = 1024
 
 es_type = "Sep_CMA_ES"
 
-num_iterations = int(total_evaluations / batch_size) 
-print("Iterations: ", num_iterations)
+num_iterations = int(total_evaluations / batch_size / steps) 
+print("Iterations per step: ", num_iterations)
+print("Iterations: ", num_iterations*steps)
 
 from evosax import Strategies
 assert es_type in Strategies, f"{es_type} is not one of {Strategies.keys()}"
@@ -114,18 +120,12 @@ from qdax_es.core.emitters.jedi_emitter import JEDiEmitter
 from qdax_es.core.emitters.jedi_pool_emitter import GPJEDiPoolEmitter, UniformJEDiPoolEmitter
 from qdax_es.utils.restart import FixedGens, ConvergenceRestarter, DualConvergenceRestarter
 
-# restarter = FixedGens(es_gens)
-# restarter = ConvergenceRestarter(
-#     min_score_spread=0.2,
-#     min_gens=3,
-#     # max_gens=100
-#     )
 restarter = DualConvergenceRestarter(
-    min_score_spread=3,
-    min_bd_spread=0.1,
-    min_gens=3,
-    max_gens=100
-    )
+    min_score_spread=5,
+    min_bd_spread=0.05,
+    min_gens=10,
+    max_gens=500
+)
 
 emitter = JEDiEmitter(
     centroids=centroids,
@@ -133,20 +133,20 @@ emitter = JEDiEmitter(
     es_type=es_type,
     wtfs_alpha = wtfs_alpha,
     restarter=restarter,
+    global_norm=False,
 )
 
+# emitter = UniformJEDiPoolEmitter(
 emitter = GPJEDiPoolEmitter(
     pool_size=pool_size,
     emitter=emitter
 )
 
-repertoire_type = GPRepertoire
-
 map_elites = CustomMAPElites(
     scoring_function=scoring_fn,
     emitter=emitter,
     metrics_function=metrics_fn,
-    repertoire_type=repertoire_type,
+    repertoire_type=GPRepertoire,
 )
 
 with jax.disable_jit():
@@ -160,27 +160,79 @@ with jax.disable_jit():
 # with jax.disable_jit():
 # map_elites.update(repertoire, emitter_state, random_key);
 
-(repertoire, emitter_state, random_key,), metrics = jax.lax.scan(
-    map_elites.scan_update,
-    (repertoire, emitter_state, random_key),
-    (),
-    length=num_iterations,
-)
+env_steps = jnp.arange(num_iterations) * emitter.batch_size * episode_length
+
+from qdax.utils.plotting import plot_map_elites_results
+import matplotlib
+from tqdm import tqdm
+
+
+metrics = {}
+iter = 0
+for step in tqdm(range(steps)):
+    (repertoire, emitter_state, random_key,), step_metrics = jax.lax.scan(
+        map_elites.scan_update,
+        (repertoire, emitter_state, random_key),
+        (),
+        length=int(num_iterations),
+    )
+    if metrics:
+        for k in step_metrics.keys():
+            metrics[k] = jnp.concatenate([metrics[k], step_metrics[k]])
+    else:
+        metrics = step_metrics
+    iter += num_iterations
+
+    env_steps = jnp.arange(iter)  * episode_length
+    fig, axes = plot_map_elites_results(
+        env_steps=env_steps,
+        metrics=metrics,
+        repertoire=repertoire,
+        min_bd=min_bd,
+        max_bd=max_bd,
+    )
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    plt.show()
+
+    final_repertoire = repertoire.fit_gp()
+    fig, axes = final_repertoire.plot(min_bd, max_bd)
+
+    current_target_bd = jax.vmap(
+        lambda e: e.wtfs_target,
+    )(
+        emitter_state.emitter_states
+    )
+    ax = axes["C"]
+    ax.scatter(current_target_bd[:, 0], current_target_bd[:, 1], c="red", marker="x")
+    ax = axes["D"]
+    ax.scatter(current_target_bd[:, 0], current_target_bd[:, 1], c="red", marker="x")
+
+    # ax.legend()
+
+    # Save fig with step number
+    figname = f"./plots/{env_name}/DyR_{'W' if weighted_gp else ''}JEDi_" + str(wtfs_alpha) + "_count_" + str(step) + ".png"
+    # create folder if it does not exist
+    import os
+    os.makedirs(os.path.dirname(figname), exist_ok=True)
+    print("Save figure in: ", figname)
+    plt.savefig(figname)
+    plt.close()
+
+print(metrics["coverage"].shape)
 
 for k, v in metrics.items():
     print(f"{k} after {num_iterations * batch_size}: {v[-1]}")
 
-repertoire.total_count
+print(f"Total count: {repertoire.total_count}")
 
 emitter_state.emitter_states.restart_state
 
 # ## Plot results
 
-env_steps = jnp.arange(num_iterations) * emitter.batch_size * episode_length
+env_steps = jnp.arange(num_iterations * steps) * emitter.batch_size * episode_length 
 
 from qdax.utils.plotting import plot_map_elites_results
 import matplotlib
-
 
 fig, axes = plot_map_elites_results(
     env_steps=env_steps,
@@ -191,23 +243,23 @@ fig, axes = plot_map_elites_results(
 )
 
 # main title
-plt.suptitle(f"{env_name} task with {es_type} for JEDi", fontsize=20)
+plt.suptitle(f"{env_name} task with {es_type} for JEDi with Dynamic Restart", fontsize=20)
 
 # udpate this variable to save your results locally
 savefig = True
 if savefig:
-    figname = f"./plots/{env_name}/DyRJEDi_"  + str(wtfs_alpha) + "_logs.png"
+    figname = f"./plots/{env_name}/DyR_{'W' if weighted_gp else ''}JEDi_"  + str(wtfs_alpha) + ".png"
     # create folder if it does not exist
     import os
     os.makedirs(os.path.dirname(figname), exist_ok=True)
     print("Save figure in: ", figname)
     plt.savefig(figname)
 
-final_repertoire = repertoire.fit_gp(10)
-fig, axes = final_repertoire.plot(-1, 1);
+final_repertoire = repertoire.fit_gp()
+fig, axes = final_repertoire.plot(min_bd, max_bd);
 
 if savefig:
-    figname = f"./plots/{env_name}/DyRJEDi_"  + str(wtfs_alpha) + "_count.png"
+    figname = f"./plots/{env_name}/DyR_{'W' if weighted_gp else ''}JEDi_"  + str(wtfs_alpha) + "_count.png"
     # create folder if it does not exist
     import os
     os.makedirs(os.path.dirname(figname), exist_ok=True)

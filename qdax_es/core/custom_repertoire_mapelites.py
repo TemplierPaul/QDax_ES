@@ -63,35 +63,35 @@ class CustomMAPElites(MAPElites):
         fitnesses, descriptors, extra_scores, random_key = self._scoring_function(
             genotypes, random_key
         )
+        with jax.disable_jit():
+            # init the repertoire
+            repertoire = self.repertoire_type.init(
+                genotypes=genotypes,
+                fitnesses=fitnesses,
+                descriptors=descriptors,
+                centroids=centroids,
+                extra_scores=extra_scores,
+                **repertoire_kwargs,
+            )
 
-        # init the repertoire
-        repertoire = self.repertoire_type.init(
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            centroids=centroids,
-            extra_scores=extra_scores,
-            **repertoire_kwargs,
-        )
+            # get initial state of the emitter
+            emitter_state, random_key = self._emitter.init(
+                random_key=random_key,
+                repertoire=repertoire,
+                genotypes=genotypes,
+                fitnesses=fitnesses,
+                descriptors=descriptors,
+                extra_scores=extra_scores,
+            )
 
-        # get initial state of the emitter
-        emitter_state, random_key = self._emitter.init(
-            random_key=random_key,
-            repertoire=repertoire,
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            extra_scores=extra_scores,
-        )
-
-        # update emitter state
-        emitter_state = self._emitter.state_update(
-            emitter_state=emitter_state,
-            repertoire=repertoire,
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            extra_scores=extra_scores,
-        )
+            # update emitter state
+            emitter_state = self._emitter.state_update(
+                emitter_state=emitter_state,
+                repertoire=repertoire,
+                genotypes=genotypes,
+                fitnesses=fitnesses,
+                descriptors=descriptors,
+                extra_scores=extra_scores,
+            )
 
         return repertoire, emitter_state, random_key

@@ -8,9 +8,11 @@ from flax.struct import dataclass as fdataclass
 from flax.struct import PyTreeNode
 import optax 
 
-EMPTY_WEIGHT = 1e3
-DEFAULT_X = 10
+EMPTY_WEIGHT = 1e4
+DEFAULT_X = 100
 EPSILON = 1e-4
+jitter = 1e-6
+max_count = 1e3
 
 learning_rate = 1e-3
 optimizer = optax.adam(learning_rate)
@@ -20,9 +22,9 @@ def softplus(x):
 
 @fdataclass
 class RBFParams:
-    sigma: float = 1.0
-    lengthscale: float = 1.0
-    obs_noise_sigma: float = 1.0
+    sigma: float = .5
+    lengthscale: float = .2
+    obs_noise_sigma: float = 1.
 
     @classmethod
     def random_params(cls, key):
@@ -54,6 +56,7 @@ class GPState(PyTreeNode):
     weights: jnp.ndarray = None
     weighted: bool=False 
     mask: jnp.ndarray = None
+    fit_kernel: bool = False
 
     @classmethod
     def init(cls, x, y, weighted, count, empty_weight = EMPTY_WEIGHT):
@@ -76,12 +79,27 @@ class GPState(PyTreeNode):
         y_min, y_max = y.min(), y.max()
         y = (y-y_min) / (y_max - y_min + EPSILON)
 
+        # Norm count
+        # count_factor = jnp.where(
+        #     count.max() > max_count,
+        #     max_count / count.max(),
+        #     1
+        # )
+        # count = count * count_factor
+        
+        # clip count 
+        # count = jnp.clip(count, 1e-3, 1e3)
+
+        # Compute weights
+        # count = jnp.log(count + 1) 
+
         weights = jnp.where(
             weighted,
             jnp.where(mask, 1/count, empty_weight), # 1/count is the weight
             jnp.where(mask, 1.0, empty_weight),
         )
         weights = jnp.diag(weights)
+
 
         # If weighted, scale y by number of evals
         # y = jnp.where(weighted, y * count, y)
@@ -114,7 +132,7 @@ def compute_K(params, X, weights):
     """Compute the kernel matrix K using vmap"""
     # K = jax.vmap(rbf_kernel, in_axes=(None, 0, 1))(params, X, X)
     K = jax.vmap(lambda x1: jax.vmap(lambda x2: rbf_kernel(params, x1, x2))(X))(X)
-    return K + params.obs_noise_sigma**2 * weights #+ EPSILON * jnp.eye(X.shape[0])
+    return K + params.obs_noise_sigma**2 * weights + jitter * jnp.eye(X.shape[0])
 
 @jit
 def compute_Kinv(gp_state):
@@ -156,6 +174,8 @@ def neg_marginal_likelihood(params, X, Y, weights):
 
 grad_neg_marginal_likelihood = jit(jax.grad(neg_marginal_likelihood))
 
+
+
 @jit
 def train_loop(gp_state, opt_state):
     grads = grad_neg_marginal_likelihood(
@@ -166,11 +186,11 @@ def train_loop(gp_state, opt_state):
         )
     # Clip gradients
     grads = jax.tree_map(lambda x: jnp.clip(x, -1e3, 1e3), grads)
-    jax.debug.print("grads {}", grads)
+    # jax.debug.print("grads {}", grads)
     
     # update parameters 
     updates, opt_state = optimizer.update(grads, opt_state)
-    jax.debug.print("updates {}", updates)
+    # jax.debug.print("updates {}", updates)
     # jax.debug.print("old params {}", gp_state.kernel_params)
     params = optax.apply_updates(
         gp_state.kernel_params, 
@@ -238,9 +258,9 @@ def get_init_state(gp_state):
     return gp_state.replace(kernel_params=params)
 
 @partial(jit, static_argnames=("num_steps",))
-def train_gp(gp_state, num_steps):
+def optimise_kernel(gp_state, num_steps):
     gp_state = get_init_state(gp_state)
-    # jax.debug.print("Init  GP params {}", gp_state.kernel_params)
+    jax.debug.print("Init  GP params {}", gp_state.kernel_params)
 
     opt_state = optimizer.init(gp_state.kernel_params)
 
@@ -251,14 +271,28 @@ def train_gp(gp_state, num_steps):
         jnp.arange(num_steps),
     )
     jax.debug.print("NaNs {}", is_nan)
-    # jax.debug.print("Train GP params {}", gp_state.kernel_params)
+    jax.debug.print("Train GP params {}", gp_state.kernel_params)
     return gp_state
+
+@partial(jit, static_argnames=("num_steps",))
+def train_gp(gp_state, num_steps):
+    gp_state = jax.lax.cond(
+        # jax and
+        gp_state.weighted,
+        # jnp.logical_and(jnp.logical_not(gp_state.fit_kernel), gp_state.weighted),
+        lambda x: optimise_kernel(x, num_steps),
+        lambda x: x,
+        gp_state
+    )
+    Kinv = compute_Kinv(gp_state)
+    return gp_state.replace(Kinv=Kinv, fit_kernel=True)
 
 
 def gp_predict(gp_state, x_new):
     # jax.debug.print("Pred  GP params {}", gp_state.kernel_params)
 
-    Kinv = compute_Kinv(gp_state)
+    # Kinv = compute_Kinv(gp_state)
+    Kinv = gp_state.Kinv
     X, Y = gp_state.x, gp_state.y
     y_min, y_max = gp_state.y_min, gp_state.y_max
     params = gp_state.kernel_params
@@ -282,5 +316,14 @@ def gp_predict(gp_state, x_new):
 
 def gp_batch_predict(gp_state, x_new):
     f_mean, f_var = jax.vmap(partial(gp_predict, gp_state))(x_new)
-    jax.debug.print("Negative variance {}", (f_var < 0).sum())
+    # jax.debug.print("Negative variance {}", (f_var < 0).sum())
+    negative_mask = f_var < 0
+    # Sum all negative variances
+    total_negative_variance = jnp.sum(jnp.where(negative_mask, f_var, 0))
+    # Count all negative variances
+    count_negative_variance = jnp.sum(negative_mask) + 1
+    # jax.debug.print("Average negative variance {}", total_negative_variance / count_negative_variance)
+    # Clip negative variances
+    f_var = jnp.clip(f_var, 0, None)
+    # jax.debug.print("NaN variance {}", jnp.isnan(f_var).sum())
     return f_mean, f_var

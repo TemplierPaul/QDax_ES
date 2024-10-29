@@ -26,7 +26,8 @@ from qdax_es.core.emitters.jedi_emitter import (
     split,
     split_tree,
 )
-from qdax_es.utils.pareto_selection import get_pareto_indices
+from qdax_es.core.containers.gp_repertoire import GPRepertoire
+from qdax_es.utils.pareto_selection import get_pareto_indices, stoch_get_pareto_indices
 
 
 class UniformJEDiPoolEmitter(Emitter):
@@ -79,10 +80,26 @@ class UniformJEDiPoolEmitter(Emitter):
             extra_scores,
         )
 
+        random_key, subkey = jax.random.split(random_key)
+        target_bd_indices = jax.random.choice(
+            subkey,
+            jnp.arange(len(repertoire.fitnesses)),
+            (self.pool_size,),
+            replace=False,
+        )
+
+        emitter_states = jax.vmap(
+            lambda s, i: s.replace(wtfs_target=repertoire.centroids[i]),
+            in_axes=(0, 0)
+        )(
+            emitter_states,
+            target_bd_indices
+        )
+        
         emitter_state = MultiESEmitterState(emitter_states)
         return emitter_state, random_key
 
-    @partial(jax.jit, static_argnames=("self",))
+    # @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: EvosaxEmitterState,
@@ -142,7 +159,7 @@ class UniformJEDiPoolEmitter(Emitter):
 
         return MultiESEmitterState(final_emitter_states)
 
-    @partial(jax.jit, static_argnames=("self",))
+    # @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: MapElitesRepertoire,
@@ -219,24 +236,27 @@ class GPJEDiPoolEmitter(UniformJEDiPoolEmitter):
         self,
         pool_size: int,
         emitter:Emitter,
+        n_steps: int = 1000,
     ):
         self.pool_size = pool_size
         self.emitter = emitter
 
         self.get_pareto_indices = partial(
-            get_pareto_indices, 
+            stoch_get_pareto_indices, 
             n_points=self.pool_size, 
             max_depth=10
             )
         self.get_pareto_indices = jax.jit(self.get_pareto_indices)
+        self.train_select = jax.jit(partial(self._train_select, n_steps=n_steps))
 
-    def train_select(self, repertoire, emitter_state):
+
+    def _train_select(self, repertoire, emitter_state, n_steps=1000):
         """
         Train the GP and select targets on the pareto front
         """
-        fit_repertoire = repertoire.fit_gp(100)
+        fit_repertoire = repertoire.fit_gp(n_steps=n_steps)
         mean, var = fit_repertoire.batch_predict(repertoire.centroids)
-        pareto_indices = self.get_pareto_indices(mean, var)
+        pareto_indices = self.get_pareto_indices(mean, var, emitter_state.random_key[0])
         return pareto_indices
         
 

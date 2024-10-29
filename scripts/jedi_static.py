@@ -42,36 +42,55 @@ from qdax_es.utils.setup import setup_qd
 
 # from jax.config import config
 # config.update("jax_debug_nans", True)
+stochastic = False
+
+# env_name = "halfcheetah_uni"
+env_name = "kheperax_snake"
+# env_name = "pointmaze"
+# episode_length = 100
+
+if "kheperax" in env_name:
+    episode_length = 250
+    total_evaluations = 2e6
+    steps = 10
+    policy_hidden_layer_sizes = (8,)
+    activation = "relu"
+    es_pop = 16
+    es_gens = 100
+    es_type = "Sep_CMA_ES"
+
+if "halfcheetah_uni" in env_name:
+    episode_length = 500
+    total_evaluations = 1e7
+    steps = 100
+    policy_hidden_layer_sizes = (256, 256,)
+    activation = "tanh"
+    es_pop = 256
+    es_gens = 100
+    es_type = "LM_MA_ES"
+
 
 # ES params
-es_pop = 16
+
 sigma_g = .05
 
 # JEDi params
 pool_size = 4
-es_gens = 100
-wtfs_alpha = 0.7
-weighted_gp = False
+
+wtfs_alpha = 0.5
+weighted_gp = True
 
 batch_size = es_pop * pool_size
 print("batch_size", batch_size)
 initial_batch = batch_size
 
-env_name = "kheperax_pointmaze"
-episode_length = 250
-# env_name = "pointmaze"
-# episode_length = 100
-stochastic = True
-total_evaluations = 1e6
-steps = 10
 seed = 42
-policy_hidden_layer_sizes = (8,)
-activation = "relu"
+
 
 num_init_cvt_samples = 50000
 num_centroids = 1024
 
-es_type = "Sep_CMA_ES"
+
 
 num_iterations = int(total_evaluations / batch_size / steps) 
 print("Iterations per step: ", num_iterations)
@@ -88,7 +107,7 @@ es_params = {
 }
 
 repertoire_kwargs = {
-    "n_steps": 1000,
+    "n_steps": 10,
     "weighted": weighted_gp,
 }
 
@@ -161,12 +180,12 @@ from qdax.utils.plotting import plot_map_elites_results
 import matplotlib
 from tqdm import tqdm
 
-
+scan_update = jax.jit(map_elites.scan_update)
 metrics = {}
 iter = 0
 for step in tqdm(range(steps)):
     (repertoire, emitter_state, random_key,), step_metrics = jax.lax.scan(
-        map_elites.scan_update,
+        scan_update,
         (repertoire, emitter_state, random_key),
         (),
         length=int(num_iterations),
@@ -189,7 +208,7 @@ for step in tqdm(range(steps)):
     plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     plt.show()
 
-    final_repertoire = repertoire.fit_gp(100)
+    final_repertoire = repertoire.fit_gp()
     fig, axes = final_repertoire.plot(min_bd, max_bd)
 
     current_target_bd = jax.vmap(
@@ -243,14 +262,14 @@ plt.suptitle(f"{env_name} task with {es_type} for JEDi", fontsize=20)
 # udpate this variable to save your results locally
 savefig = True
 if savefig:
-    figname = f"./plots/{env_name}/{'W' if weighted_gp else ''}_JEDi.png"
+    figname = f"./plots/{env_name}/{'W' if weighted_gp else ''}JEDi_"  + str(wtfs_alpha) + ".png"
     # create folder if it does not exist
     import os
     os.makedirs(os.path.dirname(figname), exist_ok=True)
     print("Save figure in: ", figname)
     plt.savefig(figname)
 
-final_repertoire = repertoire.fit_gp(10)
+final_repertoire = repertoire.fit_gp()
 fig, axes = final_repertoire.plot(min_bd, max_bd);
 
 if savefig:

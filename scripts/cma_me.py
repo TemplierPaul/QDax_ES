@@ -38,8 +38,8 @@ episode_length = 250
 seed = 42
 num_init_cvt_samples = 1000
 num_centroids = 1000
-min_bd = -1.0
-max_bd = 1.0
+# min_bd = -1.0
+# max_bd = 1.0
 
 policy_hidden_layer_sizes = (8,)
 activation = "relu"

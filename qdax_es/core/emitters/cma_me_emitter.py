@@ -21,12 +21,23 @@ from qdax_es.core.emitters.evosax_base_emitter import EvosaxEmitterState
 from qdax_es.utils.restart import RestartState, CMARestarter
 
 from qdax_es.utils.termination import cma_criterion
+from qdax.core.emitters.emitter import Emitter, EmitterState
 
 class CMAMERestarter(CMARestarter):
     """
     Restart when the ES has converged
     """
-    def restart_criteria(self, emitter_state, scores):
+    def restart_criteria(
+        self,
+        emitter_state: Emitter,
+        scores: Fitness,
+        repertoire: MapElitesRepertoire,
+        genotypes: Genotype,
+        fitnesses: Fitness,
+        descriptors: Descriptor,
+        extra_scores: Optional[ExtraScores],
+        novelty_archive: NoveltyArchive = None
+        ):
         """
         Check if the restart condition is met.
         """
@@ -35,7 +46,15 @@ class CMAMERestarter(CMARestarter):
         more_than_min = emitter_state.restart_state.generations >= self.min_gens
         neg_improvement = jnp.logical_and(neg_improvement, more_than_min)
         
-        cma_restart = super().restart_criteria(emitter_state, scores)
+        cma_restart = super().restart_criteria(
+            emitter_state=emitter_state,
+            scores=scores,
+            repertoire=repertoire,
+            genotypes=genotypes,
+            fitnesses=fitnesses,
+            descriptors=descriptors,
+            extra_scores=extra_scores,
+            novelty_archive=novelty_archive,)
 
         return jnp.logical_or(neg_improvement, cma_restart)
 
@@ -47,6 +66,7 @@ class CMAMEEmitter(EvosaxEmitterAll):
     def __init__(
         self,
         centroids: Centroid,
+        emitter_type: str = "imp",
         es_hp = {},
         es_type="CMA_ES",
         scoring_fn: Callable[
@@ -75,7 +95,10 @@ class CMAMEEmitter(EvosaxEmitterAll):
             restarter=restarter,
         )
 
-        self.ranking_criteria = self._cmame_criteria
+        if emitter_type == "imp":
+            self.ranking_criteria = self._cmame_criteria
+        else: 
+            raise NotImplementedError(f"Unknown emitter type: {emitter_type}. Supported types are: 'imp'")
         self.restart = self._restart_repertoire
 
 
