@@ -121,13 +121,16 @@ def plot_results_jedi(
     step
     ):
     final_repertoire = repertoire.fit_gp()
-    fig, axes = final_repertoire.plot(min_bd, max_bd)
+    fig, axes = final_repertoire.plot(min_bd, max_bd, cfg=cfg)
+    plt.suptitle(f"{cfg.algo.plotting.algo_name} in {cfg.task.plotting.task_name}", fontsize=20)
+
 
     current_target_bd = jax.vmap(
         lambda e: e.wtfs_target,
     )(
         emitter_state.emitter_states
     )
+
     ax = axes["C"]
     ax.scatter(current_target_bd[:, 0], current_target_bd[:, 1], c="red", marker="x")
     ax = axes["D"]
@@ -142,5 +145,5 @@ def plot_results_jedi(
     # create folder if it does not exist
     os.makedirs(os.path.dirname(figname), exist_ok=True)
     print("Save figure in: ", figname)
-    plt.savefig(figname)
+    plt.savefig(figname, bbox_inches='tight')
     plt.close()

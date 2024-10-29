@@ -1,6 +1,11 @@
 seed: 42
 env_name: halfcheetah_uni
-episode_length: 500
+plotting:
+  task_name: HalfCheetah
+  fitness_bounds: [-500, 7000]
+  max_eval_cell: 6
+
+episode_length: 1000
 stochastic: false
 total_evaluations: 5e6
 

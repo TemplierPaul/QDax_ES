@@ -1,0 +1,13 @@
+defaults:
+  - cmame
+  - _self_
+
+plotting:
+  algo_name: CMA-MAE
+
+emitter_type: imp
+
+annealing: 
+  use_mae: true
+  min_threshold: null
+  archive_learning_rate: 0.1

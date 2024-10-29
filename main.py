@@ -1,6 +1,7 @@
 import hydra
 
 from typing import Dict, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import os
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.80"
@@ -10,6 +11,10 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.80"
 import matplotlib as mpl
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.collections import LineCollection
+from matplotlib.colors import Normalize
+from matplotlib.figure import Figure
 
 import jax 
 import jax.numpy as jnp
@@ -43,7 +48,7 @@ from qdax_es.core.emitters.jedi_pool_emitter import GPJEDiPoolEmitter, UniformJE
 from qdax_es.utils.restart import FixedGens, ConvergenceRestarter, DualConvergenceRestarter
 
 from qdax_es.utils.count_plots import plot_archive_value
-from qdax.utils.plotting import plot_map_elites_results
+from qdax.utils.plotting import plot_map_elites_results as base_plot_map_elites_results
 import matplotlib
 from tqdm import tqdm
 from omegaconf import DictConfig, OmegaConf
@@ -54,6 +59,26 @@ from factories.cmame import CMAME_factory, plot_results_cmame
 
 # Check there is a gpu
 assert jax.device_count() > 0, "No GPU found"
+
+def plot_map_elites_results(
+        evals: jnp.ndarray,
+        metrics: Dict,
+        repertoire: MapElitesRepertoire,
+        min_bd: jnp.ndarray,
+        max_bd: jnp.ndarray,
+    ) -> Tuple[Optional[Figure], Axes]:
+    fig, axes = base_plot_map_elites_results(
+        env_steps=evals,
+        metrics=metrics,
+        repertoire=repertoire,
+        min_bd=min_bd,
+        max_bd=max_bd,
+    )
+    # Set first 3 x axis titles to be "Evaluations"
+    for ax in axes[:3]:
+        ax.set_xlabel("Evaluations") 
+    return fig, axes
+        
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def main_jedi(cfg: DictConfig) -> None:
@@ -77,8 +102,8 @@ def main_jedi(cfg: DictConfig) -> None:
         
         plot_results = plot_results_jedi
 
-    elif algo.algo in ["cmame", "cma_me"]:
-        print("CMAME")
+    elif algo.algo in ["cmame"]:
+        print(algo.plotting.algo_name)
         (
             min_bd, 
             max_bd, 
@@ -126,13 +151,11 @@ def main_jedi(cfg: DictConfig) -> None:
 
     # ## Plot results
 
-    env_steps = jnp.arange(num_iterations * cfg.steps) * emitter.batch_size * cfg.task.episode_length 
-
-    from qdax.utils.plotting import plot_map_elites_results
-    import matplotlib
+    # env_steps = jnp.arange(num_iterations * cfg.steps) * emitter.batch_size * cfg.task.episode_length 
+    evals = jnp.arange(num_iterations * cfg.steps) * emitter.batch_size
 
     fig, axes = plot_map_elites_results(
-        env_steps=env_steps,
+        evals=evals,
         metrics=metrics,
         repertoire=repertoire,
         min_bd=min_bd,
@@ -140,7 +163,7 @@ def main_jedi(cfg: DictConfig) -> None:
     )
 
     # main title
-    plt.suptitle(f"{cfg.task.env_name} task with {cfg.task.es_params.es_type} for JEDi", fontsize=20)
+    plt.suptitle(f"{cfg.algo.plotting.algo_name} in {cfg.task.plotting.task_name}", fontsize=20)
 
     # udpate this variable to save your results locally
     savefig = True
@@ -151,7 +174,7 @@ def main_jedi(cfg: DictConfig) -> None:
         import os
         os.makedirs(os.path.dirname(figname), exist_ok=True)
         print("Save figure in: ", figname)
-        plt.savefig(figname)
+        plt.savefig(figname, bbox_inches="tight")
 
     plot_results(
             repertoire,

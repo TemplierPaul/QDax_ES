@@ -13,3 +13,5 @@ archive:
   num_init_cvt_samples: 5000
   num_centroids: 1025
 
+plotting:
+  algo_name: JEDi

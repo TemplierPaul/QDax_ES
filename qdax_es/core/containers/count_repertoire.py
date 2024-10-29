@@ -333,6 +333,7 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
             max_bd,
             title='Repertoire',
             plot_gp=False,
+            cfg=None,
             ):
         if plot_gp:
             print("No GP to plot")
@@ -344,14 +345,23 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
         )
 
         try:
-            axes["A"] = plot_2d_map_elites_repertoire(
+            vmin, vmax = None, None
+            if cfg is not None:
+                vmin, vmax = cfg.task.plotting.fitness_bounds
+            _, axes["A"] = plot_2d_map_elites_repertoire(
                 centroids=self.centroids,
                 repertoire_fitnesses=self.fitnesses,
                 minval=min_bd,
                 maxval=max_bd,
                 repertoire_descriptors=self.descriptors,
                 ax=axes["A"],
+                vmin=vmin,
+                vmax=vmax,
             )
+
+            vmin, vmax = None, None
+            if cfg is not None:
+                vmin, vmax = 0, cfg.task.plotting.max_eval_cell
             axes["B"] = plot_2d_count(
                 self, 
                 min_bd, 
@@ -359,6 +369,8 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
                 log_scale=True, 
                 ax=axes["B"],
                 colormap="plasma",
+                vmin=vmin,
+                vmax=vmax,
                 )
             
             plt.suptitle(title, fontsize=20)

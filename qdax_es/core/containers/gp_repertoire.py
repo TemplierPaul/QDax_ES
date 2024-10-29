@@ -98,6 +98,7 @@ class GPRepertoire(CountMapElitesRepertoire):
             max_bd,
             title='GP',
             plot_gp=True,
+            cfg=None,
             ):
         """Plot the repertoire"""
         if plot_gp:
@@ -114,6 +115,9 @@ class GPRepertoire(CountMapElitesRepertoire):
                 figsize=(20, 8),
             )
         try:
+            vmin, vmax = None, None
+            if cfg is not None:
+                vmin, vmax = cfg.task.plotting.fitness_bounds
             _, axes["A"] = plot_2d_map_elites_repertoire(
                 centroids=self.centroids,
                 repertoire_fitnesses=self.fitnesses,
@@ -121,7 +125,13 @@ class GPRepertoire(CountMapElitesRepertoire):
                 maxval=max_bd,
                 repertoire_descriptors=self.descriptors,
                 ax=axes["A"],
+                vmin=vmin,
+                vmax=vmax,
             )
+
+            vmin, vmax = None, None
+            if cfg is not None:
+                vmin, vmax = 0, cfg.task.plotting.max_eval_cell
             axes["B"] = plot_2d_count(
                 self, 
                 min_bd, 
@@ -129,6 +139,8 @@ class GPRepertoire(CountMapElitesRepertoire):
                 log_scale=True, 
                 ax=axes["B"],
                 colormap="plasma",
+                vmin=vmin,
+                vmax=vmax,
                 )
             
             if plot_gp:

@@ -3,8 +3,15 @@ defaults:
   - _self_ # Allow overriding inherited values
 
 env_name: kheperax_snake
+
+
 total_evaluations: 1e6
 
 jedi:
   alpha: 0.3
   gens: 100
+
+plotting:
+  task_name: Kheperax Snake
+  fitness_bounds: [-400, -100]
+  max_eval_cell: 5.5

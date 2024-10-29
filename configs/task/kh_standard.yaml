@@ -1,4 +1,5 @@
 env_name: kheperax_standard
+
 episode_length: 250
 stochastic: false
 total_evaluations: 2e6
@@ -15,3 +16,8 @@ es_params:
 jedi:
   alpha: 0.5
   gens: 100
+
+plotting:
+  task_name: Kheperax Standard
+  fitness_bounds: [-350, -150]
+  max_eval_cell: 5.5

@@ -56,7 +56,6 @@ def CMAME_factory(cfg):
 
         emitter = CMAMEAnnealingEmitter(
             centroids=centroids,
-            emitter_type=algo.emitter_type,
             es_hp=es_params,
             es_type=task.es_params.es_type,
         )
@@ -93,7 +92,7 @@ def CMAME_factory(cfg):
         repertoire_kwargs=repertoire_kwargs
     )
 
-    plot_prefix = f"CMAM{'A' if algo.annealing.use_mae else ''}E_" + str(algo.emitter_type)
+    plot_prefix = algo.plotting.algo_name.replace(" ", "_")
 
     return (min_bd, 
             max_bd, 
@@ -112,16 +111,15 @@ def plot_results_cmame(
     max_bd,
     step
     ):
-    fig, axes = repertoire.plot(min_bd, max_bd)
-
-    # ax.legend()
+    fig, axes = repertoire.plot(min_bd, max_bd, cfg=cfg)
+    plt.suptitle(f"{cfg.algo.plotting.algo_name} in {cfg.task.plotting.task_name}", fontsize=20)
 
     # Save fig with step number
-    plot_prefix = f"CMAM{'A' if cfg.algo.annealing.use_mae else ''}E_" + str(cfg.algo.emitter_type)
+    plot_prefix = cfg.algo.plotting.algo_name.replace(" ", "_")
     figname = f"{cfg.plots_dir}/{cfg.task.env_name}/{plot_prefix}"+ "_count_" + str(step) + ".png"
     
     # create folder if it does not exist
     os.makedirs(os.path.dirname(figname), exist_ok=True)
     print("Save figure in: ", figname)
-    plt.savefig(figname)
+    plt.savefig(figname, bbox_inches='tight')
     plt.close()

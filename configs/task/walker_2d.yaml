@@ -1,5 +1,11 @@
 seed: 42
 env_name: walker2d_uni
+
+plotting:
+  task_name: Walker2D
+  fitness_bounds: [0, 6000]
+  max_eval_cell: 6
+
 episode_length: 1000
 stochastic: false
 total_evaluations: 1e7
