@@ -128,6 +128,8 @@ class GPRepertoire(CountMapElitesRepertoire):
                 vmin=vmin,
                 vmax=vmax,
             )
+            max_fit = jnp.max(self.fitnesses)
+            axes["A"].set_title(f"Fitness (max: {max_fit:.2f})")
 
             vmin, vmax = None, None
             if cfg is not None:

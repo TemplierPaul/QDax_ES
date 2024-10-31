@@ -14,4 +14,4 @@ archive:
   num_centroids: 1025
 
 plotting:
-  algo_name: JEDi
+  algo_name: JEDi (α=${task.jedi.alpha} | ${task.jedi.gens} gens)

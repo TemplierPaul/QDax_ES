@@ -48,7 +48,7 @@ from qdax_es.core.emitters.jedi_pool_emitter import GPJEDiPoolEmitter, UniformJE
 from qdax_es.utils.restart import FixedGens, ConvergenceRestarter, DualConvergenceRestarter
 
 from qdax_es.utils.count_plots import plot_archive_value
-from qdax.utils.plotting import plot_map_elites_results as base_plot_map_elites_results
+from qdax_es.utils.plotting import plot_map_elites_results 
 import matplotlib
 from tqdm import tqdm
 from omegaconf import DictConfig, OmegaConf
@@ -60,25 +60,6 @@ from factories.cmame import CMAME_factory, plot_results_cmame
 # Check there is a gpu
 assert jax.device_count() > 0, "No GPU found"
 
-def plot_map_elites_results(
-        evals: jnp.ndarray,
-        metrics: Dict,
-        repertoire: MapElitesRepertoire,
-        min_bd: jnp.ndarray,
-        max_bd: jnp.ndarray,
-    ) -> Tuple[Optional[Figure], Axes]:
-    fig, axes = base_plot_map_elites_results(
-        env_steps=evals,
-        metrics=metrics,
-        repertoire=repertoire,
-        min_bd=min_bd,
-        max_bd=max_bd,
-    )
-    # Set first 3 x axis titles to be "Evaluations"
-    for ax in axes[:3]:
-        ax.set_xlabel("Evaluations") 
-    return fig, axes
-        
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def main_jedi(cfg: DictConfig) -> None:
