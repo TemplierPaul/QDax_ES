@@ -4,12 +4,7 @@ defaults:
 
 env_name: kheperax_snake
 
-
 total_evaluations: 1e6
-
-jedi:
-  alpha: 0.3
-  gens: 100
 
 plotting:
   task_name: Kheperax Snake

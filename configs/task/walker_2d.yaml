@@ -18,7 +18,3 @@ es_params:
   sigma_init: 0.05
   popsize: 256
   es_type: LM_MA_ES
-
-jedi:
-  alpha: 0.3
-  gens: 1000

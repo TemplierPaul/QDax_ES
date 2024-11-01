@@ -6,12 +6,35 @@ restarter:
   type: FixedGens
 
 gp:
-  n_steps: 1000
   weighted: false
+  n_steps: 1000
 
 archive:
   num_init_cvt_samples: 5000
-  num_centroids: 1025
+  num_centroids: 1024
 
 plotting:
-  algo_name: JEDi (α=${task.jedi.alpha} | ${task.jedi.gens} gens)
+  algo_name: JEDi (x${algo.pool_size} | α=${algo.params.alpha} | ${algo.params.gens} gens)
+
+params:
+  alpha: ${oc.select:algo.env_params.${task.env_name}.alpha, ${algo.default_params.alpha}}
+  gens: ${oc.select:algo.env_params.${task.env_name}.gens, ${algo.default_params.gens}}
+
+default_params:
+  alpha: 0.5
+  gens: 100
+
+env_params:
+  kheperax_pointmaze:
+    alpha: 0.3
+  kheperax_snake:
+    alpha: 0.3
+  kheperax_standard:
+    alpha: 0.5
+  halfcheetah_uni:
+    alpha: 0.5
+    gens: 100
+  walker2d_uni:
+    alpha: 0.3
+    gens: 1000
+

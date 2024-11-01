@@ -4,7 +4,7 @@ from typing import Dict, Tuple
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import os
-# os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.80"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "1"
 # Jax floating point precision
 # os.environ["JAX_ENABLE_X64"] = "True"
 
@@ -61,8 +61,19 @@ from factories.cmame import CMAME_factory, plot_results_cmame
 assert jax.device_count() > 0, "No GPU found"
 import wandb
 
+def set_env_params(cfg: DictConfig) -> Dict:
+    if "env_params" not in cfg.algo.keys():
+        return cfg
+    env_params = cfg.algo.env_params.defaults
+    if cfg.task.env_name in cfg.algo.env_params.keys():
+        for k, v in cfg.algo.env_params[cfg.task.env_name].items():
+            env_params[k] = v
+    cfg.algo.env_params = env_params
+    return cfg
+
 @hydra.main(version_base=None, config_path="configs", config_name="config")
-def main_jedi(cfg: DictConfig) -> None:
+def main(cfg: DictConfig) -> None:
+    # cfg = set_env_params(cfg)
     print(OmegaConf.to_yaml(cfg))
     task = cfg.task
     algo = cfg.algo
@@ -181,11 +192,18 @@ def main_jedi(cfg: DictConfig) -> None:
             cfg,
             min_bd, 
             max_bd,
-            step="end"
+            step="end",
+            wandb_run=wandb_run
         )
+
+    wandb_run.finish()
     # Return last max fitness
     return jnp.max(repertoire.fitnesses)
 
 
 if __name__ == "__main__":
-    main_jedi()
+    try:
+        wandb.setup()
+    except:
+        print("Wandb not available")
+    main()

@@ -13,10 +13,6 @@ es_params:
   popsize: 16
   es_type: Sep_CMA_ES
 
-jedi:
-  alpha: 0.5
-  gens: 100
-
 plotting:
   task_name: Kheperax Standard
   fitness_bounds: [-350, -150]

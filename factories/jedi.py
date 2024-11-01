@@ -10,6 +10,7 @@ from qdax_es.utils.setup import setup_qd
 from qdax_es.core.emitters.jedi_emitter import JEDiEmitter
 from qdax_es.core.emitters.jedi_pool_emitter import GPJEDiPoolEmitter, UniformJEDiPoolEmitter
 from qdax_es.utils.restart import FixedGens, ConvergenceRestarter, DualConvergenceRestarter
+import wandb
 
 from evosax import Strategies
 
@@ -26,6 +27,11 @@ def JEDi_factory(cfg):
 
     assert task.es_params.es_type in Strategies, f"{task.es_params.es_type} is not one of {Strategies.keys()}"
 
+    print("gens: ", cfg.algo.params.gens)   
+    print("gens: ", type(cfg.algo.params.gens))   
+
+    print("alpha: ", cfg.algo.params.alpha)
+    print("alpha: ", type(cfg.algo.params.alpha))
 
     setup_config = {
         "seed": cfg.seed,
@@ -49,14 +55,14 @@ def JEDi_factory(cfg):
     ) = setup_qd(setup_config)
 
     if algo.restarter.type == "FixedGens":
-        restarter = FixedGens(task.jedi.gens)
+        restarter = FixedGens(cfg.algo.params.gens)
 
     elif algo.restarter.type == "DualConvergenceRestarter":
         restarter = DualConvergenceRestarter(
-            min_score_spread=5,
-            min_bd_spread=0.05,
-            min_gens=10,
-            max_gens=500
+            min_score_spread=cfg.algo.params.min_score_spread,
+            min_bd_spread=cfg.algo.params.min_bd_spread,
+            min_gens=cfg.algo.params.min_gens,
+            max_gens=cfg.algo.params.max_gens,
         )
         warn("DualConvergenceRestarter parameters are hardcoded")
         
@@ -65,12 +71,12 @@ def JEDi_factory(cfg):
     
     es_params = {
         k:v for k,v in task.es_params.items() if k != "es_type"}
-    
+
     emitter = JEDiEmitter(
         centroids=centroids,
         es_hp=es_params,
         es_type=task.es_params.es_type,
-        wtfs_alpha = task.jedi.alpha,
+        wtfs_alpha = cfg.algo.params.alpha,
         restarter=restarter,
         global_norm=algo.global_norm,
     )
@@ -101,7 +107,7 @@ def JEDi_factory(cfg):
         repertoire_kwargs=repertoire_kwargs
     )
 
-    plot_prefix = f"{'W' if algo.gp.weighted else ''}JEDi_" + str(task.jedi.alpha)
+    plot_prefix = f"{'W' if algo.gp.weighted else ''}JEDi_" + str(cfg.algo.params.alpha)
 
     return (min_bd, 
             max_bd, 
@@ -118,7 +124,8 @@ def plot_results_jedi(
     cfg,
     min_bd, 
     max_bd,
-    step
+    step,
+    wandb_run=None
     ):
     final_repertoire = repertoire.fit_gp()
     fig, axes = final_repertoire.plot(min_bd, max_bd, cfg=cfg)
@@ -139,9 +146,12 @@ def plot_results_jedi(
     # ax.legend()
 
     # Save fig with step number
-    plot_prefix = f"{'W' if cfg.algo.gp.weighted else ''}JEDi_" + str(cfg.task.jedi.alpha)
+    plot_prefix = f"{'W' if cfg.algo.gp.weighted else ''}JEDi_" + str(cfg.algo.params.alpha)
     figname = f"{cfg.plots_dir}/{cfg.task.env_name}/{plot_prefix}"+ "_count_" + str(step) + ".png"
     
+    if wandb_run is not None:
+        wandb_run.log({f"step_{step}": wandb.Image(fig)})
+
     # create folder if it does not exist
     os.makedirs(os.path.dirname(figname), exist_ok=True)
     print("Save figure in: ", figname)

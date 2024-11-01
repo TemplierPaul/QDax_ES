@@ -7,7 +7,3 @@ task_name: Debug (Kheperax PointMaze)
 
 total_evaluations: 1e4
 
-jedi:
-  alpha: 0.3
-  gens: 10
-
