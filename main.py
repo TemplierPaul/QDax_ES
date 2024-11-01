@@ -4,7 +4,7 @@ from typing import Dict, Tuple
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import os
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.80"
+# os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.80"
 # Jax floating point precision
 # os.environ["JAX_ENABLE_X64"] = "True"
 
@@ -59,7 +59,7 @@ from factories.cmame import CMAME_factory, plot_results_cmame
 
 # Check there is a gpu
 assert jax.device_count() > 0, "No GPU found"
-
+import wandb
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def main_jedi(cfg: DictConfig) -> None:
@@ -69,6 +69,10 @@ def main_jedi(cfg: DictConfig) -> None:
     import os
     os.makedirs(cfg.plots_dir, exist_ok=True)
     
+    if cfg.wandb.use:
+        cfg_dict = OmegaConf.to_container(cfg, resolve=True)
+        wandb_run = wandb.init(project=cfg.wandb.project, entity=cfg.wandb.entity, config=cfg_dict)
+
     if algo.algo == "jedi":
         (
             min_bd, 
@@ -103,21 +107,31 @@ def main_jedi(cfg: DictConfig) -> None:
 
     num_iterations = int(task.total_evaluations / emitter.batch_size / cfg.steps) 
 
-    # scan_update = jax.jit(map_elites.scan_update)
+    update = jax.jit(map_elites.update)
     metrics = {}
     iter = 0
     for step in tqdm(range(cfg.steps)):
-        (repertoire, emitter_state, random_key,), step_metrics = jax.lax.scan(
-            map_elites.scan_update,
-            (repertoire, emitter_state, random_key),
-            (),
-            length=int(num_iterations),
-        )
-        if metrics:
-            for k in step_metrics.keys():
-                metrics[k] = jnp.concatenate([metrics[k], step_metrics[k]])
-        else:
-            metrics = step_metrics
+        for gen in range(num_iterations):
+            repertoire, emitter_state, step_metrics, random_key = update(
+                repertoire, emitter_state, random_key
+            )
+            step_metrics = {k: v for k, v in step_metrics.items()}
+            step_metrics['generation'] = step * num_iterations + gen + 1
+            step_metrics['evaluations'] = step_metrics['generation'] * emitter.batch_size
+
+            # print(step_metrics)
+            # print(type(step_metrics))
+
+            if metrics == {}:
+                metrics = step_metrics.copy()
+            
+            else:
+                for k in step_metrics.keys():
+                    metrics[k] = jnp.append(metrics[k], step_metrics[k])
+
+            if cfg.wandb.use:
+                wandb_run.log(step_metrics)
+
         iter += num_iterations
 
         plot_results(
@@ -157,6 +171,10 @@ def main_jedi(cfg: DictConfig) -> None:
         print("Save figure in: ", figname)
         plt.savefig(figname, bbox_inches="tight")
 
+    if cfg.wandb.use:
+        # Log the figure to wandb
+        wandb_run.log({"results": wandb.Image(fig)})
+
     plot_results(
             repertoire,
             emitter_state,
@@ -165,6 +183,8 @@ def main_jedi(cfg: DictConfig) -> None:
             max_bd,
             step="end"
         )
+    # Return last max fitness
+    return jnp.max(repertoire.fitnesses)
 
 
 if __name__ == "__main__":

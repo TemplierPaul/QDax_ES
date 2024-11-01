@@ -5,6 +5,7 @@ apptainer/tmp/*
 apptainer/var_tmp/* 
 plots/*
 output/*
+multirun/*
 *.err
 *.out
 *.egg-info

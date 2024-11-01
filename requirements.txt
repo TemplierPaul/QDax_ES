@@ -5,7 +5,11 @@ evosax==0.1.6
 notebook
 # kheperax
 hydra-core
+hydra-joblib-launcher
+# hydra-nevergrad-sweeper
+wandb
 
+# git+https://github.com/TemplierPaul/Kheperax.git
 
 # pip install hydra-core
 # optax==0.1.7
