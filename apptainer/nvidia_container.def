@@ -1,0 +1,66 @@
+Bootstrap: docker
+From: nvidia/cuda:12.5.1-cudnn-runtime-ubuntu22.04
+
+%files
+	~/.container_bashrc /root/.bashrc
+	requirements.txt /root/requirements.txt
+	
+%environment
+	export PROJECT_NAME='QDax_ES'
+    source /root/.bashrc
+	# System
+	export TZ=Europe/London
+
+	# Activate virtual environment permanently
+	export VIRTUAL_ENV='/venv'
+	export _OLD_VIRTUAL_PATH="$PATH"
+	export PATH="$VIRTUAL_ENV/bin:$PATH"
+
+	# Add /workspace/src/ to PYTHONPATH
+	export PYTHONPATH='/workspace/src'
+	export JUPYTER_ALLOW_INSECURE_WRITES=true
+    export CUDA_VISIBLE_DEVICES=0
+
+%post
+    echo "source /root/.bashrc" >> /root/.bash_profile
+
+	export DEBIAN_FRONTEND=noninteractive
+
+	# Export environment variables permanently
+	echo "export WANDB_API_KEY=$WANDB_API_KEY" >> $APPTAINER_ENVIRONMENT
+
+	# Update and install required libraries
+	apt update
+	apt install -y unzip wget git software-properties-common
+    apt install -y libgl1-mesa-dev libgl1-mesa-glx libosmesa6-dev libglfw3
+    # apt install -y ffmpeg
+
+	# Install correct version of cudnn
+	apt-get install libcudnn8=8.9.4.* libcudnn8-dev=8.9.4.*
+
+	# Install Python
+	add-apt-repository ppa:deadsnakes/ppa
+	apt install -y python3.11 python3.11-venv
+
+	# Create a virtual environment
+	python3.11 -m venv /venv
+	. /venv/bin/activate
+	python -m ensurepip
+	pip install --upgrade pip
+
+	# Set up workspace
+
+    # pip install jax[cuda12]==0.4.16 jaxlib==0.4.16 evosax==0.1.6 numpy==1.24.1
+	
+	pip install -r /root/requirements.txt
+	mkdir /workspace/ && cd /workspace/
+
+	# git clone https://github.com/TemplierPaul/Kheperax.git
+	# pip install -e /workspace/Kheperax
+
+	# python -c "import jax ; print(jax.__version__)"
+	# python -c "import jax ; print(jax.devices())"
+	
+%runscript
+	# Run main
+	python /workdir/main.py "$@"

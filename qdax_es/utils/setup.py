@@ -22,20 +22,22 @@ from qdax.core.containers.mapelites_repertoire import (
 
 def create_task(config, random_key):
     if "kheperax" in config["env"]:
-        from kheperax.final_distance import FinalDistKheperaxTask
-        from kheperax.target import TargetKheperaxConfig
-        from kheperax.quad_task import QuadKheperaxConfig
+        from kheperax.tasks.final_distance import FinalDistKheperaxTask
+        from kheperax.tasks.target import TargetKheperaxConfig
+        from kheperax.tasks.quad import make_quad_config
 
         map_name = config["env"].replace("kheperax_", "").replace("kheperax-", "")
         # Define Task configuration
         if "quad_" in map_name:
             base_map_name = map_name.replace("quad_", "")
             # print(f"Kheperax Quad: Using {base_map_name} as base map")
-            config_kheperax = QuadKheperaxConfig.get_map(base_map_name)
+            # config_kheperax = QuadKheperaxConfig.get_default_for_map(base_map_name)
+            config_kheperax = TargetKheperaxConfig.get_default_for_map(map_name)
+            config_kheperax = make_quad_config(config_kheperax)
             qd_offset = 2 * jnp.sqrt(2) * 100 + config["episode_length"]
         else:
             # print(f"Kheperax: Using {map_name} as base map")
-            config_kheperax = TargetKheperaxConfig.get_map(map_name)
+            config_kheperax = TargetKheperaxConfig.get_default_for_map(map_name)
             qd_offset = jnp.sqrt(2) * 100 + config["episode_length"]
 
         

@@ -3,7 +3,7 @@ qdax[cuda12]
 # jax[cuda12_pip]==0.4.28
 evosax==0.1.6
 notebook
-# kheperax
+kheperax 
 hydra-core
 hydra-joblib-launcher
 # hydra-nevergrad-sweeper

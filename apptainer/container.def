@@ -1,0 +1,68 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%help
+	Apptainer definition file example to be used with `build_container.sh`, `shell_container.sh` and `hpc.sh`.
+
+%labels
+	Author m.faldor22@imperial.ac.uk
+    Edits p.templier@imperial.ac.uk
+
+%files
+	~/.container_bashrc /root/.bashrc
+
+%environment
+	export TZ=Europe/London
+    source /root/.bashrc
+	export OPENBLAS_NUM_THREADS=1
+
+	# pyenv
+	export PYENV_ROOT="/workdir/.pyenv"
+	export PATH="$PYENV_ROOT/bin:$PATH"
+
+	# venv
+	export VIRTUAL_ENV="/workdir/.venv"
+	export _OLD_VIRTUAL_PATH="$PATH"
+	export PATH="$VIRTUAL_ENV/bin:$PATH"
+
+	# python
+	export PYTHONPATH='/workdir'
+
+%post
+    echo "source /root/.bashrc" >> /root/.bash_profile
+
+	export DEBIAN_FRONTEND=noninteractive
+
+	# Export environment variables permanently
+	echo "export WANDB_API_KEY=$WANDB_API_KEY" >> $APPTAINER_ENVIRONMENT
+
+	# Update and install required libraries
+	apt update && apt install -y git curl wget ffmpeg build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+
+	# Clone repository to /workdir/
+	git clone https://{{ github_user }}:{{ github_token }}@github.com/TemplierPaul/QDax_ES.git /workdir/
+
+	# Install pyenv
+	export PYENV_ROOT="/workdir/.pyenv"
+	export PATH="$PYENV_ROOT/bin:$PATH"
+	curl https://pyenv.run | bash
+	eval "$(pyenv init -)"
+	pyenv update
+	rm -rf /workdir/.pyenv/.git/
+
+	# Install Python
+	pyenv install 3.12
+	pyenv global 3.12
+
+	# Create a virtual environment
+	python -m venv /workdir/.venv
+	. /workdir/.venv/bin/activate
+	python -m ensurepip
+	pip install --upgrade pip setuptools wheel
+
+	# Install repository
+	cd /workdir/ && pip install -r requirements.txt
+
+%runscript
+	# Run main
+	python /workdir/main.py "$@"

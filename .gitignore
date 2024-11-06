@@ -3,6 +3,7 @@ examples/plots/*.png
 *.pyc
 apptainer/tmp/*
 apptainer/var_tmp/* 
+apptainer/*.sif
 plots/*
 output/*
 multirun/*

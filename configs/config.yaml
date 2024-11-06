@@ -12,3 +12,4 @@ wandb:
   project: QDax_ES
   entity: null
   use: True
+  tag: null

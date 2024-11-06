@@ -8,18 +8,18 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
-pip install git+https://github.com/TemplierPaul/Kheperax.git
 ```
 
 ## Run
+
 ```bash
 python main.py algo=jedi task=kh_standard
-``` 
-
+```  
 
 ## Features roadmap
 
 ### Algorithms
+
 - JEDi:
 - [X] JEDi emitter
 - [ ] Weighted GP
@@ -39,13 +39,13 @@ python main.py algo=jedi task=kh_standard
 - [ ] CMA-MEGA
 
 ### Tasks
+
 - [X] Brax
 - Kheperax
 - [X] Custom fork
-- [ ] Kheperax 0.2.0
-
+- [X] Kheperax 0.2.0
 
 ### Pipeline
-- [X] Hydra
-- [ ] W&B
 
+- [X] Hydra
+- [X] W&B
