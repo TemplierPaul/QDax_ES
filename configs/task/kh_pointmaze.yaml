@@ -6,9 +6,6 @@ env_name: kheperax_pointmaze
 
 total_evaluations: 1e6
 
-
-fitness_bounds: [-400, -100]
-
 plotting:
   task_name: Kheperax PointMaze
   fitness_bounds: [-400, -100]

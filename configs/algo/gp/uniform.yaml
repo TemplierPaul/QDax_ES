@@ -1,0 +1,6 @@
+# JEDi with uniform sampling
+
+jedi_prefix: "U-"
+emitter: UniformJEDiPoolEmitter
+
+weighted: false

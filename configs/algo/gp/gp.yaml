@@ -1,0 +1,6 @@
+# Standard GP JEDi
+
+jedi_prefix: ""
+emitter: GPJEDiPoolEmitter
+
+weighted: false

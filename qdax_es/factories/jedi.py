@@ -1,6 +1,4 @@
 import jax 
-from typing import Dict
-from warnings import warn
 import os
 import matplotlib.pyplot as plt
 from qdax_es.core.custom_repertoire_mapelites import CustomMAPElites
@@ -8,11 +6,19 @@ from qdax_es.core.containers.gp_repertoire import GPRepertoire
 
 from qdax_es.utils.setup import setup_qd
 from qdax_es.core.emitters.jedi_emitter import JEDiEmitter
-from qdax_es.core.emitters.jedi_pool_emitter import GPJEDiPoolEmitter, UniformJEDiPoolEmitter
-from qdax_es.utils.restart import FixedGens, ConvergenceRestarter, DualConvergenceRestarter
+from qdax_es.core.emitters.jedi_pool_emitter import (
+    UniformJEDiPoolEmitter,
+    GPJEDiPoolEmitter,
+    )
+from qdax_es.utils.restart import FixedGens
 import wandb
 
 from evosax import Strategies
+
+JEDI_EMITTERS = {
+    "UniformJEDiPoolEmitter": UniformJEDiPoolEmitter,
+    "GPJEDiPoolEmitter": GPJEDiPoolEmitter,
+}
 
 def JEDi_factory(cfg):
     task = cfg.task
@@ -27,11 +33,7 @@ def JEDi_factory(cfg):
 
     assert task.es_params.es_type in Strategies, f"{task.es_params.es_type} is not one of {Strategies.keys()}"
 
-    print("gens: ", cfg.algo.params.gens)   
-    print("gens: ", type(cfg.algo.params.gens))   
-
-    print("alpha: ", cfg.algo.params.alpha)
-    print("alpha: ", type(cfg.algo.params.alpha))
+    print("Algo: ", cfg.algo.plotting.algo_name)   
 
     setup_config = {
         "seed": cfg.seed,
@@ -56,15 +58,6 @@ def JEDi_factory(cfg):
 
     if algo.restarter.type == "FixedGens":
         restarter = FixedGens(cfg.algo.params.gens)
-
-    elif algo.restarter.type == "DualConvergenceRestarter":
-        restarter = DualConvergenceRestarter(
-            min_score_spread=cfg.algo.params.min_score_spread,
-            min_bd_spread=cfg.algo.params.min_bd_spread,
-            min_gens=cfg.algo.params.min_gens,
-            max_gens=cfg.algo.params.max_gens,
-        )
-        warn("DualConvergenceRestarter parameters are hardcoded")
         
     else:
         raise ValueError(f"Unknown restarter type: {algo.restarter.type}")
@@ -81,11 +74,15 @@ def JEDi_factory(cfg):
         global_norm=algo.global_norm,
     )
 
-    # emitter = UniformJEDiPoolEmitter(
-    emitter = GPJEDiPoolEmitter(
+    emitter_class = JEDI_EMITTERS[algo.gp.emitter]
+    emitter_args = algo.gp.args if hasattr(algo.gp, "args") else {}
+    if algo.gp.emitter != "UniformJEDiPoolEmitter":
+        emitter_args["n_steps"] = algo.gp.n_steps
+    
+    emitter = emitter_class(
         pool_size=algo.pool_size,
         emitter=emitter,
-        n_steps=algo.gp.n_steps
+        **emitter_args
     )
 
     scoring_fn = jax.jit(scoring_fn)

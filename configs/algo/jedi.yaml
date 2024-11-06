@@ -1,3 +1,7 @@
+defaults:
+  - gp: gp 
+  - _self_ 
+
 algo: jedi
 pool_size: 4
 global_norm: false
@@ -6,7 +10,6 @@ restarter:
   type: FixedGens
 
 gp:
-  weighted: false
   n_steps: 1000
 
 archive:
@@ -14,7 +17,7 @@ archive:
   num_centroids: 1024
 
 plotting:
-  algo_name: JEDi (x${algo.pool_size} | α=${algo.params.alpha} | ${algo.params.gens} gens)
+  algo_name: ${algo.gp.jedi_prefix}JEDi (x${algo.pool_size} | α=${algo.params.alpha} | ${algo.params.gens} gens)
 
 params:
   alpha: ${oc.select:algo.env_params.${task.env_name}.alpha, ${algo.default_params.alpha}}
@@ -30,7 +33,7 @@ env_params:
   kheperax_snake:
     alpha: 0.3
   kheperax_standard:
-    alpha: 0.5
+    alpha: 0.7
   halfcheetah_uni:
     alpha: 0.5
     gens: 100

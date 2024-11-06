@@ -1,0 +1,6 @@
+# Weighted GP JEDi
+
+jedi_prefix: "W-"
+emitter: GPJEDiPoolEmitter
+
+weighted: true
