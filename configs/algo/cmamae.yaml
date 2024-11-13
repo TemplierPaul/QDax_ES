@@ -11,3 +11,17 @@ annealing:
   use_mae: true
   min_threshold: null
   archive_learning_rate: 0.1
+
+# Factory
+factory: 
+  _target_: qdax_es.factories.cmame.CMAMEFactory
+
+emitter: 
+  _target_: qdax_es.core.emitters.cma_mae_emitter.CMAMEAnnealingEmitter
+  _partial_: true
+
+repertoire_init:
+  _target_: qdax_es.core.containers.mae_repertoire.MAERepertoire.init
+  _partial_: true
+  min_threshold: null
+  archive_learning_rate: 0.1

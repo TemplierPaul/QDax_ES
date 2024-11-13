@@ -18,9 +18,6 @@ from qdax_es.utils.plotting import plot_map_elites_results
 from tqdm import tqdm
 from omegaconf import DictConfig, OmegaConf
 
-from qdax_es.factories.jedi import JEDi_factory, plot_results_jedi
-from qdax_es.factories.cmame import CMAME_factory, plot_results_cmame
-
 # Check there is a gpu
 assert jax.device_count() > 0, "No GPU found"
 import wandb
@@ -49,37 +46,20 @@ def main(cfg: DictConfig) -> None:
         cfg_dict = OmegaConf.to_container(cfg, resolve=True)
         wandb_run = wandb.init(project=cfg.wandb.project, entity=cfg.wandb.entity, config=cfg_dict)
 
-    if algo.algo == "jedi":
-        (
-            min_bd, 
-            max_bd, 
-            random_key, 
-            map_elites, 
-            emitter, 
-            repertoire, 
-            emitter_state,
-            plot_prefix
-            ) = JEDi_factory(cfg)
-        
-        plot_results = plot_results_jedi
+    algo_factory = hydra.utils.instantiate(cfg.algo.factory)
 
-    elif algo.algo in ["cmame"]:
-        print(algo.plotting.algo_name)
-        (
-            min_bd, 
-            max_bd, 
-            random_key, 
-            map_elites, 
-            emitter, 
-            repertoire, 
-            emitter_state,
-            plot_prefix
-            ) = CMAME_factory(cfg)
-        
-        plot_results = plot_results_cmame
-        
-    else:
-        raise NotImplementedError(f"algo.type not supported, got {algo.type}")
+    (
+        min_bd, 
+        max_bd, 
+        random_key, 
+        map_elites, 
+        emitter, 
+        repertoire, 
+        emitter_state,
+        plot_prefix
+        ) = algo_factory.build(cfg)
+    
+    plot_results = algo_factory.plot_results
 
     num_iterations = int(task.total_evaluations / emitter.batch_size / cfg.steps) 
 

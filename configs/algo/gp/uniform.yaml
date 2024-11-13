@@ -1,6 +1,8 @@
 # JEDi with uniform sampling
 
 jedi_prefix: "U-"
-emitter: UniformJEDiPoolEmitter
 
-weighted: false
+emitter: 
+  _target_: qdax_es.core.emitters.jedi_pool_emitter.UniformJEDiPoolEmitter
+  _partial_: true
+  pool_size: ${algo.pool_size}

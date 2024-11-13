@@ -1,6 +1,12 @@
 # Weighted GP JEDi
 
 jedi_prefix: "W-"
-emitter: GPJEDiPoolEmitter
+emitter: 
+  _target_: qdax_es.core.emitters.jedi_pool_emitter.GPJEDiPoolEmitter
+  _partial_: true
+  pool_size: ${algo.pool_size}
 
-weighted: true
+repertoire:
+  _target_: qdax_es.core.containers.gp_repertoire.GPRepertoire
+  _partial_: true
+  weighted: true

@@ -4,8 +4,6 @@ plotting:
   
 pool_size: 4
 
-emitter_type: imp # imp, opt, rnd
-
 annealing: 
   use_mae: false
 
@@ -13,3 +11,15 @@ archive:
   num_init_cvt_samples: 5000
   num_centroids: 1025
 
+# Factory
+factory: 
+  _target_: qdax_es.factories.cmame.CMAMEFactory
+
+emitter: 
+  _target_: qdax_es.core.emitters.cma_me_emitter.CMAMEEmitter
+  _partial_: true
+  emitter_type: imp # imp, opt, rnd
+
+repertoire_init:
+  _target_: qdax_es.core.containers.count_repertoire.CountMapElitesRepertoire.init
+  _partial_: true

@@ -28,12 +28,12 @@ class CustomMAPElites(MAPElites):
         ],
         emitter: Emitter,
         metrics_function: Callable[[MapElitesRepertoire], Metrics],
-        repertoire_type=MapElitesRepertoire,
+        repertoire_init=MapElitesRepertoire.init,
     ) -> None:
         self._scoring_function = scoring_function
         self._emitter = emitter
         self._metrics_function = metrics_function
-        self.repertoire_type = repertoire_type
+        self.repertoire_init = repertoire_init
 
 
     # @partial(jax.jit, static_argnames=("self",))
@@ -65,7 +65,7 @@ class CustomMAPElites(MAPElites):
         )
         with jax.disable_jit():
             # init the repertoire
-            repertoire = self.repertoire_type.init(
+            repertoire = self.repertoire_init(
                 genotypes=genotypes,
                 fitnesses=fitnesses,
                 descriptors=descriptors,

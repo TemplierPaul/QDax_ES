@@ -7,7 +7,8 @@ pool_size: 4
 global_norm: false
 
 restarter:
-  type: FixedGens
+  _target_: qdax_es.utils.restart.FixedGens
+  max_gens: ${algo.params.gens}
 
 gp:
   n_steps: 1000
@@ -16,9 +17,23 @@ archive:
   num_init_cvt_samples: 5000
   num_centroids: 1024
 
+# Factory
+factory: 
+  _target_: qdax_es.factories.jedi.JEDiFactory
+
+# Repertoire
+repertoire_init: ${oc.select:algo.gp.repertoire_init, ${algo.default_repertoire_init}}
+
+default_repertoire_init:
+  _target_: qdax_es.core.containers.gp_repertoire.GPRepertoire.init
+  _partial_: true
+  weighted: false
+
+# Plotting name
 plotting:
   algo_name: ${algo.gp.jedi_prefix}JEDi (x${algo.pool_size} | α=${algo.params.alpha} | ${algo.params.gens} gens)
 
+# Algo parameters
 params:
   alpha: ${oc.select:algo.env_params.${task.env_name}.alpha, ${algo.default_params.alpha}}
   gens: ${oc.select:algo.env_params.${task.env_name}.gens, ${algo.default_params.gens}}

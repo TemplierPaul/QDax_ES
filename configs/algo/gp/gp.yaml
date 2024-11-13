@@ -1,6 +1,12 @@
 # Standard GP JEDi
 
 jedi_prefix: ""
-emitter: GPJEDiPoolEmitter
+emitter: 
+  _target_: qdax_es.core.emitters.jedi_pool_emitter.GPJEDiPoolEmitter
+  _partial_: true
+  pool_size: ${algo.pool_size}
 
-weighted: false
+repertoire_init:
+  _target_: qdax_es.core.containers.gp_repertoire.GPRepertoire.init
+  _partial_: true
+  weighted: false
