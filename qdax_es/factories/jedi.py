@@ -16,7 +16,7 @@ class JEDiFactory:
     def build(self, cfg):
         task = cfg.task
         algo = cfg.algo
-        assert algo.algo == "jedi", f"algo.type should be jedi, got {algo.type}"
+        assert algo.algo == "jedi", f"algo.algo should be jedi, got {algo.algo}"
 
         batch_size = task.es_params.popsize * algo.pool_size
         initial_batch = batch_size
