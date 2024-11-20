@@ -4,3 +4,16 @@ defaults:
 
 launcher:
   n_jobs: 10
+
+
+job:
+  chdir: True
+run:
+  dir: ./workdir/output
+sweep:
+  dir: ./workdir/output
+  subdir: ${hydra.job.num}
+
+# sweeper:
+#   params:
+#     seed: "\$RANDOM"
