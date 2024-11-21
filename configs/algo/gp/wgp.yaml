@@ -6,7 +6,8 @@ emitter:
   _partial_: true
   pool_size: ${algo.pool_size}
 
-repertoire:
-  _target_: qdax_es.core.containers.gp_repertoire.GPRepertoire
+repertoire_init:
+  _target_: qdax_es.core.containers.gp_repertoire.GPRepertoire.init
   _partial_: true
   weighted: true
+  max_count: 1e4

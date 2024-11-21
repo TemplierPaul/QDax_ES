@@ -12,7 +12,6 @@ EMPTY_WEIGHT = 1e4
 DEFAULT_X = 100
 EPSILON = 1e-4
 jitter = 1e-6
-max_count = 1e3
 
 learning_rate = 1e-3
 optimizer = optax.adam(learning_rate)
@@ -59,7 +58,7 @@ class GPState(PyTreeNode):
     fit_kernel: bool = False
 
     @classmethod
-    def init(cls, x, y, weighted, count, empty_weight = EMPTY_WEIGHT):
+    def init(cls, x, y, weighted, count, max_count= 1e3, empty_weight = EMPTY_WEIGHT):
         kernel_params = RBFParams()
         mask = count > 0
 
@@ -80,15 +79,15 @@ class GPState(PyTreeNode):
         y = (y-y_min) / (y_max - y_min + EPSILON)
 
         # Norm count
-        # count_factor = jnp.where(
-        #     count.max() > max_count,
-        #     max_count / count.max(),
-        #     1
-        # )
-        # count = count * count_factor
+        count_factor = jnp.where(
+            count.max() > max_count,
+            max_count / count.max(),
+            1
+        )
+        count = count * count_factor
         
         # clip count 
-        # count = jnp.clip(count, 1e-3, 1e3)
+        count = jnp.clip(count, 1e-3, 1e3)
 
         # Compute weights
         # count = jnp.log(count + 1) 
