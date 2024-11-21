@@ -38,9 +38,16 @@ From: ubuntu:22.04
 
 	# Update and install required libraries
 	apt update && apt install -y git curl wget ffmpeg build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+	apt install -y wget git software-properties-common ffmpeg
 
 	# Clone repository to /workdir/
 	git clone https://{{ github_user }}:{{ github_token }}@github.com/TemplierPaul/QDax_ES.git /workdir/
+	git checkout {{ commit }}  
+	
+	# Output directory
+	mkdir -p /workdir/output
+	chmod 777 /workdir/output
+	ls -la /workdir/
 
 	# Install pyenv
 	export PYENV_ROOT="/workdir/.pyenv"
