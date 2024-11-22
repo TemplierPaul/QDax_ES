@@ -5,7 +5,7 @@ plotting:
   fitness_bounds: [-8000, 2000]
   max_eval_cell: 6
 
-episode_length: 1000
+episode_length: 250
 stochastic: false
 total_evaluations: 1e7
 

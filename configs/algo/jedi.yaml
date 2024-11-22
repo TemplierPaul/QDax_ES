@@ -55,4 +55,7 @@ env_params:
   walker2d_uni:
     alpha: 0.3
     gens: 1000
+  antmaze:
+    alpha: 0.3
+    gens: 1000
 

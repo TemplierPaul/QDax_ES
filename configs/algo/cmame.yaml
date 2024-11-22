@@ -1,11 +1,7 @@
-algo: cmame
 plotting:
-  algo_name: CMA-ME (${algo.emitter_type})
+  algo_name: CMA-ME (${algo.emitter.emitter_type})
   
 pool_size: 4
-
-annealing: 
-  use_mae: false
 
 archive:
   num_init_cvt_samples: 5000

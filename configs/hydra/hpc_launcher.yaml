@@ -22,15 +22,22 @@ launcher:
   ngpus: 1
   gpu_type: L40S
   njobs: 1
-  n_runs_per_job: 10
+  n_runs_per_job: 5
   add_seed: True
   container: latest
   run_jobs: true
 
+# sweeper:
+#   params:
+#     # task: kh_standard, kh_pointmaze, kh_snake 
+#     task: halfcheetah, walker_2d, antmaze
+#     algo: dy_jedi, jedi
+#     # algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
+#     algo.params.alpha: decay
+#     algo/gp: gp
+
 sweeper:
   params:
-    task: kh_standard, kh_pointmaze, kh_snake #, halfcheetah, walker_2d, antmaze
-    algo: dy_jedi, jedi
-    algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
-    # algo.params.alpha: decay
-    algo/gp: gp
+    task: kh_standard, kh_pointmaze, kh_snake, halfcheetah, walker_2d, antmaze
+    # task: halfcheetah, walker_2d, antmaze
+    algo: cmame, cmamae

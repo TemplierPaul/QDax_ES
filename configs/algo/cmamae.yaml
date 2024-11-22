@@ -1,16 +1,11 @@
-defaults:
-  - cmame
-  - _self_
-
 plotting:
   algo_name: CMA-MAE
 
-emitter_type: imp
+pool_size: 4
 
-annealing: 
-  use_mae: true
-  min_threshold: null
-  archive_learning_rate: 0.1
+archive:
+  num_init_cvt_samples: 5000
+  num_centroids: 1025
 
 # Factory
 factory: 

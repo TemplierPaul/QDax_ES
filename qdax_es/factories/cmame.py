@@ -2,6 +2,7 @@ import os
 import matplotlib.pyplot as plt
 import jax 
 from evosax import Strategies
+import hydra 
 
 from qdax_es.core.custom_repertoire_mapelites import CustomMAPElites
 from qdax_es.core.containers.count_repertoire import CountMapElitesRepertoire
@@ -48,33 +49,22 @@ class CMAMEFactory:
         es_params = {
             k:v for k,v in task.es_params.items() if k != "es_type"}
         
-        if algo.annealing.use_mae: # Annealing
-            repertoire_kwargs = {
-                "min_threshold" : algo.annealing.min_threshold,
-                "archive_learning_rate" : algo.annealing.archive_learning_rate,
-            }
+        repertoire_init = hydra.utils.instantiate(cfg.algo.repertoire_init)
+        print("Repertoire init: ", repertoire_init)
 
-            emitter = CMAMEAnnealingEmitter(
-                centroids=centroids,
-                es_hp=es_params,
-                es_type=task.es_params.es_type,
-            )
+        internal_emitter_func = hydra.utils.instantiate(cfg.algo.emitter)
 
-            repertoire_init = MAERepertoire.init
-        else: # No Annealing
-            repertoire_kwargs = {}
+        internal_emitter = internal_emitter_func(
+            centroids=centroids,
+            es_hp=es_params,
+            es_type=task.es_params.es_type,
+        )
 
-            emitter = CMAMEEmitter(
-                centroids=centroids,
-                emitter_type=algo.emitter_type,
-                es_hp=es_params,
-                es_type=task.es_params.es_type,
-            )
-            repertoire_init = CountMapElitesRepertoire.init
-
+        print("Emitter: ", internal_emitter)
+    
         emitter = CMAMEPoolEmitter(
             num_states=algo.pool_size,
-            emitter=emitter
+            emitter=internal_emitter
         )
 
         map_elites = CustomMAPElites(
@@ -89,7 +79,7 @@ class CMAMEFactory:
             init_variables, 
             centroids, 
             random_key,
-            repertoire_kwargs=repertoire_kwargs
+            repertoire_kwargs={}
         )
 
         plot_prefix = algo.plotting.algo_name.replace(" ", "_")

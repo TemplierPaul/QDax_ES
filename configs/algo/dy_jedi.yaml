@@ -46,4 +46,9 @@ env_params:
     max_gen: 1000
     min_score_spread: 10
 
+  antmaze:
+    alpha: 0.3
+    max_gen: 2000
+    min_score_spread: 100
+
 
