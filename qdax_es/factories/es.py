@@ -4,16 +4,16 @@ import jax
 from evosax import Strategies
 import hydra 
 import wandb
-
 from qdax_es.core.custom_repertoire_mapelites import CustomMAPElites
 from qdax_es.core.containers.count_repertoire import CountMapElitesRepertoire
 from qdax_es.core.containers.mae_repertoire import MAERepertoire
 from qdax_es.core.emitters.cma_me_emitter import CMAMEEmitter, CMAMEPoolEmitter
 from qdax_es.core.emitters.cma_mae_emitter import CMAMEAnnealingEmitter
+from qdax_es.core.emitters.evosax_emitter import EvosaxEmitterAll
 
 from qdax_es.utils.setup import setup_qd
 
-class CMAMEFactory:
+class ESFactory:
     def build(self, cfg):
         task = cfg.task
         algo = cfg.algo
@@ -50,23 +50,18 @@ class CMAMEFactory:
         es_params = {
             k:v for k,v in task.es_params.items() if k != "es_type"}
         
+        # EvosaxEmitterAll
         repertoire_init = hydra.utils.instantiate(cfg.algo.repertoire_init)
         print("Repertoire init: ", repertoire_init)
 
-        internal_emitter_func = hydra.utils.instantiate(cfg.algo.emitter)
+        emitter_func = hydra.utils.instantiate(cfg.algo.emitter)
 
-        internal_emitter = internal_emitter_func(
+        emitter = emitter_func(
             centroids=centroids,
             es_hp=es_params,
             es_type=task.es_params.es_type,
         )
-
-        print("Emitter: ", internal_emitter)
-    
-        emitter = CMAMEPoolEmitter(
-            num_states=algo.pool_size,
-            emitter=internal_emitter
-        )
+        print("Emitter: ", emitter)
 
         map_elites = CustomMAPElites(
             scoring_function=scoring_fn,
@@ -74,7 +69,7 @@ class CMAMEFactory:
             metrics_function=metrics_fn,
             repertoire_init=repertoire_init,
         )
-        
+
         # with jax.disable_jit():
         repertoire, emitter_state, random_key = map_elites.init(
             init_variables, 

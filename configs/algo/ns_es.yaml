@@ -1,0 +1,9 @@
+defaults:
+  - es # Inherit all settings from es.yaml
+  - _self_ # Allow overriding inherited values
+
+emitter: 
+  _target_: qdax_es.core.emitters.evosax_emitter.EvosaxEmitterAll
+  _partial_: true
+  ns_es: true
+  novelty_archive_size: 1024
