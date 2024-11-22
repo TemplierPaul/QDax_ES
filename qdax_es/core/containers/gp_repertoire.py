@@ -33,6 +33,7 @@ class GPRepertoire(CountMapElitesRepertoire):
         centroids: Centroid,
         extra_scores: Optional[ExtraScores] = None,
         weighted: bool = False,
+        max_count: int = 1e4,
     ) -> CountMapElitesRepertoire:
         """Initialize a repertoire"""
         repertoire = super().init(

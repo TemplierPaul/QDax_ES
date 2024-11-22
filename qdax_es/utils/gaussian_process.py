@@ -58,7 +58,7 @@ class GPState(PyTreeNode):
     fit_kernel: bool = False
 
     @classmethod
-    def init(cls, x, y, weighted, count, max_count= 1e3, empty_weight = EMPTY_WEIGHT):
+    def init(cls, x, y, weighted, count, max_count= 1e4, empty_weight = EMPTY_WEIGHT):
         kernel_params = RBFParams()
         mask = count > 0
 
@@ -118,12 +118,18 @@ class GPState(PyTreeNode):
         )
     
     @classmethod
-    def init_from_repertoire(cls, repertoire, weighted=False):
+    def init_from_repertoire(cls, repertoire, weighted=False, max_count= 1e4):
         x = repertoire.descriptors
         y = repertoire.fitnesses
         count = repertoire.count
         # jax.debug.print("Count {}", count.sum())
-        return cls.init(x, y, weighted, count)
+        return cls.init(
+            x=x, 
+            y=y, 
+            weighted=weighted, 
+            count=count,
+            max_count=max_count
+        )
     
 
 @jit
@@ -275,14 +281,14 @@ def optimise_kernel(gp_state, num_steps):
 
 @partial(jit, static_argnames=("num_steps",))
 def train_gp(gp_state, num_steps):
-    gp_state = jax.lax.cond(
-        # jax and
-        gp_state.weighted,
-        # jnp.logical_and(jnp.logical_not(gp_state.fit_kernel), gp_state.weighted),
-        lambda x: optimise_kernel(x, num_steps),
-        lambda x: x,
-        gp_state
-    )
+    # gp_state = jax.lax.cond(
+    #     # jax and
+    #     gp_state.weighted,
+    #     # jnp.logical_and(jnp.logical_not(gp_state.fit_kernel), gp_state.weighted),
+    #     lambda x: optimise_kernel(x, num_steps),
+    #     lambda x: x,
+    #     gp_state
+    # )
     Kinv = compute_Kinv(gp_state)
     return gp_state.replace(Kinv=Kinv, fit_kernel=True)
 

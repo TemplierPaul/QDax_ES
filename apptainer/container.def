@@ -42,7 +42,7 @@ From: ubuntu:22.04
 
 	# Clone repository to /workdir/
 	git clone https://{{ github_user }}:{{ github_token }}@github.com/TemplierPaul/QDax_ES.git /workdir/
-	git checkout {{ commit }}  
+	# git checkout {{ commit }}  
 	
 	# Output directory
 	mkdir -p /workdir/output

@@ -1,5 +1,5 @@
-seed: 42
 env_name: halfcheetah_uni
+
 plotting:
   task_name: HalfCheetah
   fitness_bounds: [-500, 7000]

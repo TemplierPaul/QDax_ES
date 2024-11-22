@@ -1,8 +1,8 @@
-env_name: walker2d_uni
+env_name: antmaze
 
 plotting:
-  task_name: Walker2D
-  fitness_bounds: [0, 6000]
+  task_name: AntMaze
+  fitness_bounds: [-8000, 2000]
   max_eval_cell: 6
 
 episode_length: 1000

@@ -160,6 +160,11 @@ class EvosaxEmitterAll(EvosaxEmitter):
         Update the state of the emitter.
         """
 
+        emitter_state = emitter_state.replace(
+            emit_count = emitter_state.emit_count + 1
+        )
+        # jax.debug.print("state_update emit count: {}", emitter_state.emit_count)
+
         scores = self.ranking_criteria(
             emitter_state=emitter_state,
             repertoire=repertoire,
@@ -340,6 +345,11 @@ class EvosaxEmitterCenter(EvosaxEmitter):
         extra_scores: Optional[ExtraScores] = None,
     ) -> Optional[EmitterState]:
         novelty_archive = emitter_state.novelty_archive
+
+        emitter_state = emitter_state.replace(
+            emit_count = emitter_state.emit_count + 1
+        )
+        # jax.debug.print("state_update emit count: {}", emitter_state.emit_count)
 
         emitter_state, descriptors = self._external_novelty_state_update(
             emitter_state,

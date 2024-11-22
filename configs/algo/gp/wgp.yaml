@@ -10,4 +10,4 @@ repertoire_init:
   _target_: qdax_es.core.containers.gp_repertoire.GPRepertoire.init
   _partial_: true
   weighted: true
-  max_count: 1e4
+  max_count: 1e3

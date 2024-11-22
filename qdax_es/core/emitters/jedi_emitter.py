@@ -8,6 +8,8 @@ import jax
 import jax.numpy as jnp
 from jax.tree_util import tree_map
 
+from optax.schedules import linear_schedule
+
 from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 from qdax.core.containers.mapelites_repertoire import (
@@ -65,6 +67,27 @@ class JEDiEmitterState(EvosaxEmitterState):
     wtfs_alpha: float
     wtfs_target: Descriptor
 
+
+class ConstantScheduler:
+    def __init__(self, value):
+        self.value = value
+
+    def __call__(self, step):
+        return self.value
+    
+    def __repr__(self):
+        return f"ConstantScheduler({self.value})"
+    
+class LinearScheduler(ConstantScheduler):
+    def __init__(self, value, end, steps):
+        self.schedule_fn = linear_schedule(value, end, steps)
+
+    def __call__(self, step):
+        # jax.debug.print("step: {}, value: {}", step, self.schedule_fn(step))
+        return self.schedule_fn(step)
+
+
+
 class JEDiEmitter(EvosaxEmitterAll):
     """
     Emitter for the Quality with Just Enough Diversity (JEDi) algorithm.
@@ -78,7 +101,7 @@ class JEDiEmitter(EvosaxEmitterAll):
             [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
         ]=None,
         restarter = None,
-        wtfs_alpha = 0.5,
+        alpha_scheduler = None,
         global_norm=False,
     ):
         """
@@ -101,10 +124,11 @@ class JEDiEmitter(EvosaxEmitterAll):
             scoring_fn=scoring_fn,
             restarter=restarter,
         )
+
         self.ranking_criteria = self._wtfs_criteria
         if global_norm:
             self.ranking_criteria = self._global_wtfs_criteria
-        self.wtfs_alpha = wtfs_alpha
+        self.alpha_scheduler = alpha_scheduler
         self.restart = self._jedi_restart
 
     def init(
@@ -124,16 +148,17 @@ class JEDiEmitter(EvosaxEmitterAll):
             descriptors=descriptors,
             extra_scores=extra_scores,
         )
+        alpha = self.alpha_scheduler(0)
         return JEDiEmitterState(
             **emitter_state.__dict__,
-            wtfs_alpha=self.wtfs_alpha,
+            wtfs_alpha=alpha,
             wtfs_target=jnp.zeros(self._centroids.shape[1]),
         ), random_key
 
 
     def _wtfs_criteria(
         self,
-        emitter_state: EvosaxEmitterState,
+        emitter_state: JEDiEmitterState,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -170,7 +195,7 @@ class JEDiEmitter(EvosaxEmitterAll):
     
     def _global_wtfs_criteria(
         self,
-        emitter_state: EvosaxEmitterState,
+        emitter_state: JEDiEmitterState,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -218,7 +243,7 @@ class JEDiEmitter(EvosaxEmitterAll):
     def _jedi_restart(
         self,
         repertoire: MapElitesRepertoire,
-        emitter_state: EvosaxEmitterState,
+        emitter_state: JEDiEmitterState,
         target_bd_index: int,
     ):
         """
@@ -227,12 +252,13 @@ class JEDiEmitter(EvosaxEmitterAll):
         # Get centroid based on target_bd_index
 
         target_bd = repertoire.centroids[target_bd_index]
-        # jax.debug.print("restart towards: {}", target_bd)
-
+        # jax.debug.print("emit count: {}", emitter_state.emit_count)
+        new_alpha = self.alpha_scheduler(emitter_state.emit_count)
         emitter_state = emitter_state.replace(
             wtfs_target=target_bd,
+            wtfs_alpha=new_alpha,
         )
-                
+        
         start_genome, start_bd = get_closest_genotype(
             bd=target_bd,
             repertoire=repertoire,
@@ -247,7 +273,7 @@ class JEDiEmitter(EvosaxEmitterAll):
 
     def finish_state_update(
             self,
-            emitter_state: EvosaxEmitterState,
+            emitter_state: JEDiEmitterState,
             repertoire: MapElitesRepertoire,
             restart_bool: bool,
             target_bd_index: int,
@@ -269,6 +295,7 @@ class JEDiEmitter(EvosaxEmitterAll):
 
         # print wtfs_target
         # jax.debug.print("wtfs_target: {}", emitter_state.wtfs_target)
+        # jax.debug.print("wtfs_alpha: {}", emitter_state.wtfs_alpha)
 
         random_key, subkey = jax.random.split(emitter_state.random_key)
         emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)

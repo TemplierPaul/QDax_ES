@@ -5,7 +5,7 @@ from qdax_es.core.custom_repertoire_mapelites import CustomMAPElites
 from qdax_es.core.containers.gp_repertoire import GPRepertoire
 
 from qdax_es.utils.setup import setup_qd
-from qdax_es.core.emitters.jedi_emitter import JEDiEmitter
+from qdax_es.core.emitters.jedi_emitter import JEDiEmitter, ConstantScheduler, LinearScheduler
 from qdax_es.utils.restart import FixedGens
 import wandb
 import hydra 
@@ -52,6 +52,13 @@ class JEDiFactory:
         restarter = hydra.utils.instantiate(cfg.algo.restarter)
         print("Restarter: ", restarter)
 
+        if cfg.algo.params.alpha == "decay":
+            alpha_scheduler = LinearScheduler(0.8, 0.0, num_iterations*cfg.steps)
+        else:
+            # Assert it is int or float
+            assert isinstance(cfg.algo.params.alpha, (int, float)), f"Alpha should be int or float if constant, got {cfg.algo.params.alpha}"
+            alpha_scheduler = ConstantScheduler(cfg.algo.params.alpha)
+
         es_params = {
             k:v for k,v in task.es_params.items() if k != "es_type"}
 
@@ -59,7 +66,7 @@ class JEDiFactory:
             centroids=centroids,
             es_hp=es_params,
             es_type=task.es_params.es_type,
-            wtfs_alpha = cfg.algo.params.alpha,
+            alpha_scheduler = alpha_scheduler,
             restarter=restarter,
             global_norm=algo.global_norm,
         )
