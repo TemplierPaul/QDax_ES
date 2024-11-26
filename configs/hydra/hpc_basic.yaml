@@ -1,7 +1,3 @@
-defaults:
-  - override launcher: joblib
-  - _self_
-
 job:
   chdir: True
 run:
@@ -9,6 +5,3 @@ run:
 sweep:
   dir: ./output/${now:%Y-%m-%d_%H%M%S_%f}
   subdir: ${hydra.job.num}
-
-launcher:
-  n_jobs: 1
