@@ -21,6 +21,7 @@ from omegaconf import DictConfig, OmegaConf
 # Check there is a gpu
 assert jax.device_count() > 0, "No GPU found"
 import wandb
+import warnings
 
 def set_env_params(cfg: DictConfig) -> Dict:
     if "env_params" not in cfg.algo.keys():
@@ -61,7 +62,15 @@ def main(cfg: DictConfig) -> None:
     
     plot_results = algo_factory.plot_results
 
-    num_iterations = int(task.total_evaluations / emitter.batch_size / cfg.steps) 
+    # Check if emitter has evals_per_gen
+    if hasattr(emitter, "evals_per_gen"):
+        evals_per_gen = emitter.evals_per_gen
+    else: 
+        warnings.warn(f"Emitter does not have evals_per_gen attribute. Using batch size of {emitter.batch_size} instead.")
+        evals_per_gen = emitter.batch_size
+
+
+    num_iterations = int(task.total_evaluations / evals_per_gen / cfg.steps) 
 
     update = jax.jit(map_elites.update)
     metrics = {}
@@ -73,7 +82,7 @@ def main(cfg: DictConfig) -> None:
             )
             step_metrics = {k: v for k, v in step_metrics.items()}
             step_metrics['generation'] = step * num_iterations + gen + 1
-            step_metrics['evaluations'] = step_metrics['generation'] * emitter.batch_size
+            step_metrics['evaluations'] = step_metrics['generation'] * evals_per_gen
 
             # print(step_metrics)
             # print(type(step_metrics))
@@ -98,7 +107,7 @@ def main(cfg: DictConfig) -> None:
             max_bd,
             step
         )
-
+    
 
     # ## Plot results
 
@@ -148,8 +157,8 @@ def main(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    try:
-        wandb.setup()
-    except:
-        print("Wandb not available")
+    # try:
+    #     wandb.setup()
+    # except:
+    #     print("Wandb not available")
     main()

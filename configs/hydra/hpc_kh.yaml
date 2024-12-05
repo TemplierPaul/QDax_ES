@@ -1,0 +1,58 @@
+defaults:
+  - override launcher: hpc_launcher
+  - _self_
+
+job:
+  chdir: True
+run:
+  dir: ./hpc/${now:%Y-%m-%d_%H%M%S_%f}
+sweep:
+  dir: ./hpc/${now:%Y-%m-%d_%H%M%S_%f}
+  subdir: ${hydra.job.num}
+
+launcher:
+  replace_hydra: hpc_basic
+  hpc: ptemplie@login.cx3.hpc.imperial.ac.uk
+  email: p.templier@imperial.ac.uk
+  job_name: TELO
+  walltime: 5:59:00
+  nnodes: 1
+  ncpus: 4
+  mem: 16gb
+  ngpus: 1
+  gpu_type: L40S
+  njobs: 1
+  n_runs_per_job: 5
+  add_seed: True
+  container: latest
+  run_jobs: true
+
+
+# sweeper:
+#   params:
+#     task: kh_standard, kh_pointmaze, kh_snake 
+#     algo: dy_jedi, jedi
+#     algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
+#     # algo.params.alpha: decay
+#     algo/gp: wgp
+
+# sweeper:
+#   params:
+#     task: kh_standard, kh_pointmaze, kh_snake
+#     # algo: es, me, pga_me
+#     algo: cmame, cmamae
+
+# sweeper:
+#   params:
+#     task: kh_standard, kh_pointmaze, kh_snake 
+#     algo: dy_jedi
+#     algo/gp: wgp
+#     algo.pool_size: 1, 16, 64, 256
+
+sweeper:
+  params:
+    task: kh_standard, kh_snake 
+    algo: dy_jedi
+    algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
+    # algo.params.alpha: decay
+    algo/gp: mae

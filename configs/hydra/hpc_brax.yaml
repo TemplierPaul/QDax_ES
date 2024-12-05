@@ -38,12 +38,18 @@ launcher:
 #     # algo.params.alpha: decay
 #     algo/gp: wgp
 
-
 # sweeper:
 #   params:
-#     task: kh_standard, kh_pointmaze, kh_snake, halfcheetah, walker_2d, antmaze
-#     # task: halfcheetah, walker_2d, antmaze
-#     algo: es, me, pga_me
+#     task: halfcheetah, walker_2d, antmaze
+#     # algo: es, me, pga_me
+#     algo: cmame, cmamae
+
+sweeper:
+  params:
+    task: halfcheetah, walker_2d, antmaze 
+    algo: dy_jedi
+    algo/gp: wgp
+    algo.pool_size: 1, 16, 64, 256
 
 # sweeper:
 #   params:

@@ -114,7 +114,7 @@ def create_task(config, random_key):
         return env, policy_network, scoring_fn, qd_offset
     
 
-def setup_qd(config):
+def setup_pga(config):
     random_key = jax.random.PRNGKey(config["seed"])
 
     (
@@ -158,4 +158,8 @@ def setup_qd(config):
         random_key=random_key,
     )
 
+    return centroids, min_bd, max_bd, scoring_fn, metrics_function, init_variables, random_key, env, policy_network
+
+def setup_qd(config):
+    centroids, min_bd, max_bd, scoring_fn, metrics_function, init_variables, random_key, env, policy_network = setup_pga(config)
     return centroids, min_bd, max_bd, scoring_fn, metrics_function, init_variables, random_key

@@ -10,6 +10,7 @@ plots_dir: plots
 
 wandb:
   project: QDax_ES
-  entity: null
+  entity: p-templier-imperial-college-london
   use: True
   tag: null
+
