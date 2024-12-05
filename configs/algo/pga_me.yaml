@@ -13,7 +13,7 @@ repertoire_init:
 factory: 
   _target_: qdax_es.factories.pga_me.PGAMEFactory
 
-config: ${oc.select:algo.env_config.${task.env_name}, ${algo.default_config}}
+# config: ${oc.select:algo.env_config.${task.env_name}, ${algo.default_config}}
 
 emitter: 
   _target_: qdax.core.emitters.pga_me_emitter.PGAMEEmitter
