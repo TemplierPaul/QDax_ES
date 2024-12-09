@@ -10,7 +10,7 @@ restarter:
   max_gens: ${algo.params.max_gens}
 
 plotting:
-  algo_name: ${algo.gp.jedi_prefix}DyJEDi (x${algo.pool_size} | α=${algo.params.alpha})
+  algo_name: ${algo.gp.jedi_prefix}DyJEDi (x${algo.pool_size} | α=${algo.params.alpha}) Dy(S ${algo.params.min_score_spread} | D ${algo.params.min_bd_spread})
 
 params:
   alpha: ${oc.select:algo.env_params.${task.env_name}.alpha, ${algo.default_params.alpha}}
@@ -31,13 +31,13 @@ env_params:
     alpha: 0.3
 
   kheperax_snake:
-    alpha: 0.3
+    alpha: 0.7
 
   kheperax_standard: 
     alpha: 0.7
 
   halfcheetah_uni:
-    alpha: 0.5
+    alpha: 0.3
     max_gen: 1000
     min_score_spread: 10
 
