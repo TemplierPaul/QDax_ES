@@ -30,6 +30,7 @@ class MEFactory:
             "env": task.env_name,
             "episode_length": task.episode_length,
             "stochastic": task.stochastic,
+            "legacy_spring": task.legacy_spring,
             "policy_hidden_layer_sizes": task.network.policy_hidden_layer_sizes,
             "activation": task.network.activation,
             "initial_batch": initial_batch,
