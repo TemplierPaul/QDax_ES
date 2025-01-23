@@ -29,12 +29,18 @@ default_params:
 env_params:
   kheperax_pointmaze:
     alpha: 0.3
+    min_score_spread: 10
+    min_bd_spread: 0.1
 
   kheperax_snake:
-    alpha: 0.7
+    alpha: 0.3
+    min_score_spread: 10
+    min_bd_spread: 0.1
 
   kheperax_standard: 
     alpha: 0.7
+    min_score_spread: 10
+    min_bd_spread: 0.1
 
   halfcheetah_uni:
     alpha: 0.3

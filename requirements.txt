@@ -2,6 +2,8 @@
 qdax[cuda12]
 # jax[cuda12_pip]==0.4.28
 evosax==0.1.6
+jax==0.4.28
+jaxlib==0.4.28
 notebook
 kheperax 
 hydra-core

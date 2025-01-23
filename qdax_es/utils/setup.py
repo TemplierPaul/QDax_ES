@@ -55,7 +55,11 @@ def create_task(config, random_key):
         return env, policy_network, scoring_fn, qd_offset
 
     else:
-        env = create_no_legacy(config["env"], episode_length=config["episode_length"])
+        env = create_no_legacy(
+            config["env"], 
+            episode_length=config["episode_length"],
+            legacy_spring=config["legacy_spring"],
+            )
 
         if env.behavior_descriptor_length != 2:
             # warn
