@@ -1,14 +1,14 @@
-env_name: walker2d_uni
+env_name: halfcheetah_uni
 
 plotting:
-  task_name: Walker2D
-  fitness_bounds: [0, 6000]
+  task_name: HalfCheetah Debug
+  fitness_bounds: [-500, 7000]
   max_eval_cell: 6
 
-episode_length: 1000
+episode_length: 10
 stochastic: false
 legacy_spring: false
-total_evaluations: 1e7
+total_evaluations: 3e4
 
 network:
   policy_hidden_layer_sizes: [256, 256]
@@ -16,7 +16,7 @@ network:
 
 es_params:
   sigma_init: 0.05
-  popsize: 256
+  popsize: 32
   es_type: LM_MA_ES
 
 descriptors:

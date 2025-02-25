@@ -52,12 +52,13 @@ def main(cfg: DictConfig) -> None:
     (
         min_bd, 
         max_bd, 
-        random_key, 
+        key, 
         map_elites, 
         emitter, 
         repertoire, 
         emitter_state,
-        plot_prefix
+        plot_prefix,
+        scoring_fn, 
         ) = algo_factory.build(cfg)
     
     plot_results = algo_factory.plot_results
@@ -77,8 +78,9 @@ def main(cfg: DictConfig) -> None:
     iter = 0
     for step in tqdm(range(cfg.steps)):
         for gen in range(num_iterations):
-            repertoire, emitter_state, step_metrics, random_key = update(
-                repertoire, emitter_state, random_key
+            key, subkey = jax.random.split(key)
+            repertoire, emitter_state, step_metrics = update(
+                repertoire, emitter_state, subkey
             )
             step_metrics = {k: v for k, v in step_metrics.items()}
             step_metrics['generation'] = step * num_iterations + gen + 1

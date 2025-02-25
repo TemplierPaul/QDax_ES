@@ -56,7 +56,7 @@ class UniformJEDiPoolEmitter(Emitter):
 
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -65,10 +65,10 @@ class UniformJEDiPoolEmitter(Emitter):
     ) -> Tuple[Optional[MultiESEmitterState], RNGKey]:
         
         # prepare keys for each emitter
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         subkeys = jax.random.split(subkey, self.pool_size)
 
-        emitter_states, keys = jax.vmap(
+        emitter_states = jax.vmap(
             self.emitter.init,
             in_axes=(0, None, None, None, None, None)
         )(
@@ -80,7 +80,7 @@ class UniformJEDiPoolEmitter(Emitter):
             extra_scores,
         )
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         target_bd_indices = jax.random.choice(
             subkey,
             jnp.arange(len(repertoire.fitnesses)),
@@ -97,7 +97,7 @@ class UniformJEDiPoolEmitter(Emitter):
         )
         
         emitter_state = MultiESEmitterState(emitter_states)
-        return emitter_state, random_key
+        return emitter_state
 
     # @partial(jax.jit, static_argnames=("self",))
     def state_update(
@@ -164,7 +164,7 @@ class UniformJEDiPoolEmitter(Emitter):
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: Optional[MultiESEmitterState],
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """Emit new population. Use all the sub emitters to emit subpopulation
         and gather them.
@@ -172,7 +172,7 @@ class UniformJEDiPoolEmitter(Emitter):
         Args:
             repertoire: a repertoire of genotypes.
             emitter_state: the current state of the emitter.
-            random_key: key for random operations.
+            key: key for random operations.
 
         Returns:
             Offsprings and a new random key.
@@ -182,13 +182,13 @@ class UniformJEDiPoolEmitter(Emitter):
             raise ValueError("Emitter state must be initialized before emitting.")
 
         # prepare subkeys for each sub emitter
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         subkeys = jax.random.split(subkey, self.pool_size)
 
         # jax.debug.print("emitter_states: {}", net_shape(emitter_state.emitter_states))
 
         # vmap
-        all_offsprings, _, keys = jax.vmap(
+        all_offsprings, _ = jax.vmap(
             lambda s, k: self.emitter.emit(repertoire, s, k),
             in_axes=(0, 0))(
             emitter_state.emitter_states,
@@ -205,7 +205,7 @@ class UniformJEDiPoolEmitter(Emitter):
 
         # jax.debug.print("offspring batch: {}", net_shape(offsprings))
 
-        return offsprings, {}, random_key
+        return offsprings, {}
     
     def get_target_bd_indices(
         self,
@@ -217,10 +217,10 @@ class UniformJEDiPoolEmitter(Emitter):
         Reset the target behavior descriptor of the emitters
         """
         # Sample target BD indices
-        random_key = emitter_state.random_key[0]
+        key = emitter_state.key[0]
 
         indices = jax.random.choice(
-            random_key,
+            key,
             jnp.arange(len(repertoire.fitnesses)),
             (self.pool_size,),
             replace=False,
@@ -256,7 +256,7 @@ class GPJEDiPoolEmitter(UniformJEDiPoolEmitter):
         """
         fit_repertoire = repertoire.fit_gp(n_steps=n_steps)
         mean, var = fit_repertoire.batch_predict(repertoire.centroids)
-        pareto_indices = self.get_pareto_indices(mean, var, emitter_state.random_key[0])
+        pareto_indices = self.get_pareto_indices(mean, var, emitter_state.key[0])
         return pareto_indices
         
 

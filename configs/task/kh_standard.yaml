@@ -17,3 +17,7 @@ plotting:
   task_name: Kheperax Standard
   fitness_bounds: [-350, -150]
   max_eval_cell: 5.5
+
+descriptors:
+  minval: [0.0, 0.0]
+  maxval: [1.0, 1.0]

@@ -94,15 +94,15 @@ class MEESEmitter(EvosaxEmitterCenter):
     )
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,      
     ):
-        emitter_state, random_key = super().init(
-            random_key=random_key,
+        emitter_state, key = super().init(
+            key=key,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
@@ -112,7 +112,7 @@ class MEESEmitter(EvosaxEmitterCenter):
         return MEESEmitterState(
             **state,
             explore_exploit=0,
-        ), random_key
+        )
 
     def restart(
         self, 

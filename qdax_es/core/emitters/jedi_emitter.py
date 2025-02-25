@@ -133,15 +133,15 @@ class JEDiEmitter(EvosaxEmitterAll):
 
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
         descriptors: Descriptor,
         extra_scores: ExtraScores,       
     ):
-        emitter_state, random_key = super().init(
-            random_key=random_key,
+        emitter_state, key = super().init(
+            key=key,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
@@ -153,7 +153,7 @@ class JEDiEmitter(EvosaxEmitterAll):
             **emitter_state.__dict__,
             wtfs_alpha=alpha,
             wtfs_target=jnp.zeros(self._centroids.shape[1]),
-        ), random_key
+        )
 
 
     def _wtfs_criteria(
@@ -297,7 +297,7 @@ class JEDiEmitter(EvosaxEmitterAll):
         # jax.debug.print("wtfs_target: {}", emitter_state.wtfs_target)
         # jax.debug.print("wtfs_alpha: {}", emitter_state.wtfs_alpha)
 
-        random_key, subkey = jax.random.split(emitter_state.random_key)
+        key, subkey = jax.random.split(emitter_state.key)
         emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)
 
         return emitter_state

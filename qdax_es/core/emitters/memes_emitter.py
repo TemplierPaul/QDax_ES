@@ -89,13 +89,13 @@ class MEMESEmitter(EvosaxEmitterCenter):
 
     @partial(jax.jit, static_argnames=("self",))
     def init(
-        self, genotypes: Optional[Genotype], random_key: RNGKey, explore_exploit:int=0
+        self, genotypes: Optional[Genotype], key: RNGKey, explore_exploit:int=0
     ) -> Tuple[Optional[MultiESEmitterState], RNGKey]:
-        state, random_key = super().init(genotypes, random_key)
+        state, key = super().init(genotypes, key)
         return MEMESEmitterState(
             **state,
             explore_exploit=explore_exploit,
-        ), random_key
+        ), key
 
 class MEMESPoolEmitterState(MultiESEmitterState):
     novelty_archive: NoveltyArchive
@@ -126,7 +126,7 @@ class MEMESPoolEmitter(Emitter):
     @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -134,7 +134,7 @@ class MEMESPoolEmitter(Emitter):
         extra_scores: ExtraScores,
     ) -> Tuple[Optional[MultiESEmitterState], RNGKey]:
         # prepare keys for each emitter
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         subkeys = jax.random.split(subkey, self.pool_size)
 
         # Make explore_exploit state booleans (deterministic)
@@ -157,14 +157,14 @@ class MEMESPoolEmitter(Emitter):
         )
 
         emitter_state = MultiESEmitterState(emitter_states)
-        return emitter_state, random_key
+        return emitter_state
 
     @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: MapElitesRepertoire,
         emitter_state: Optional[MultiESEmitterState],
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """Emit new population. Use all the sub emitters to emit subpopulation
         and gather them.
@@ -172,7 +172,7 @@ class MEMESPoolEmitter(Emitter):
         Args:
             repertoire: a repertoire of genotypes.
             emitter_state: the current state of the emitter.
-            random_key: key for random operations.
+            key: key for random operations.
 
         Returns:
             Offsprings and a new random key.
@@ -182,7 +182,7 @@ class MEMESPoolEmitter(Emitter):
             raise ValueError("Emitter state must be initialized before emitting.")
 
         # prepare subkeys for each sub emitter
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         subkeys = jax.random.split(subkey, self.pool_size)
 
         # jax.debug.print("emitter_states: {}", net_shape(emitter_state.emitter_states))
@@ -205,7 +205,7 @@ class MEMESPoolEmitter(Emitter):
 
         # jax.debug.print("offspring batch: {}", net_shape(offsprings))
 
-        return offsprings, {}, random_key
+        return offsprings, {}
     
 
     @partial(jax.jit, static_argnames=("self",))

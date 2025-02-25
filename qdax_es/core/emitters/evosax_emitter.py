@@ -43,15 +43,15 @@ class EvosaxEmitterAll(EvosaxEmitter):
             self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: EvosaxEmitterState,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
         Generate solutions to be evaluated and added to the archive.
         """
         
-        offspring, random_key = self.es_ask(emitter_state, random_key)
+        offspring, key = self.es_ask(emitter_state, key)
 
-        return offspring, {}, random_key
+        return offspring, {}
     
     # @partial(jax.jit, static_argnames=("self",))
     # def state_update(
@@ -113,7 +113,7 @@ class EvosaxEmitterAll(EvosaxEmitter):
     #         emitter_state
     #     )
 
-    #     random_key, subkey = jax.random.split(emitter_state.random_key)
+    #     key, subkey = jax.random.split(emitter_state.key)
     #     emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)
 
     #     return emitter_state
@@ -223,7 +223,7 @@ class EvosaxEmitterAll(EvosaxEmitter):
             emitter_state
         )
 
-        random_key, subkey = jax.random.split(emitter_state.random_key)
+        key, subkey = jax.random.split(emitter_state.key)
         emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)
 
         return emitter_state
@@ -252,7 +252,7 @@ class EvosaxEmitterCenter(EvosaxEmitter):
         self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: EvosaxEmitterState,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
         Emit the center of the ES.
@@ -261,7 +261,7 @@ class EvosaxEmitterCenter(EvosaxEmitter):
         es_center = emitter_state.es_state.strategy_state.mean
         offspring = self.reshaper.unflatten(es_center)
 
-        return offspring, {}, random_key
+        return offspring, {}
     
     # @partial(jax.jit, static_argnames=("self",))
     def _external_novelty_state_update(
@@ -277,16 +277,16 @@ class EvosaxEmitterCenter(EvosaxEmitter):
         """
         Do an ES step for a specified novelty archive, return behaviors to update the archive.
         """
-        random_key, subkey = jax.random.split(emitter_state.random_key)
+        key, subkey = jax.random.split(emitter_state.key)
 
-        offspring = self.es_ask(
+        offspring, key = self.es_ask(
             emitter_state=emitter_state, 
-            random_key=random_key
+            key=subkey
             )
         
-        pop_fitnesses, pop_descriptors, pop_extra_scores, random_key = self.scoring_fn(
+        pop_fitnesses, pop_descriptors, pop_extra_scores, key = self.scoring_fn(
             genotypes=offspring, 
-            random_key=subkey
+            key=subkey
             )
         
         scores = self.ranking_criteria(
@@ -329,7 +329,7 @@ class EvosaxEmitterCenter(EvosaxEmitter):
             emitter_state
         )
 
-        random_key, subkey = jax.random.split(emitter_state.random_key)
+        key, subkey = jax.random.split(emitter_state.key)
         emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)
 
         return emitter_state, pop_descriptors

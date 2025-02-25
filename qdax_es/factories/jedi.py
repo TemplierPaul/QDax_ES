@@ -9,6 +9,8 @@ from qdax_es.core.emitters.jedi_emitter import JEDiEmitter, ConstantScheduler, L
 from qdax_es.utils.restart import FixedGens
 import wandb
 import hydra 
+import warnings
+
 
 from evosax import Strategies
 
@@ -24,16 +26,23 @@ class JEDiFactory:
         print("Iterations per step: ", num_iterations)
         print("Iterations: ", num_iterations*cfg.steps)
 
+        if hasattr(task, "legacy_spring"):
+            legacy_spring = task.legacy_spring
+        else:
+            legacy_spring = False
+            warnings.warn("Legacy spring not set. Defaulting to False")
+
         assert task.es_params.es_type in Strategies, f"{task.es_params.es_type} is not one of {Strategies.keys()}"
 
-        print("Algo: ", cfg.algo.plotting.algo_name)   
+        print("Algo: ", cfg.algo.plotting.algo_name)
 
         setup_config = {
             "seed": cfg.seed,
             "env": task.env_name,
+            "descriptors": task.descriptors,
             "episode_length": task.episode_length,
             "stochastic": task.stochastic,
-            "legacy_spring": task.legacy_spring,
+            "legacy_spring": legacy_spring,
             "policy_hidden_layer_sizes": task.network.policy_hidden_layer_sizes,
             "activation": task.network.activation,
             "initial_batch": initial_batch,
@@ -47,7 +56,7 @@ class JEDiFactory:
             scoring_fn, 
             metrics_fn, 
             init_variables, 
-            random_key
+            key
         ) = setup_qd(setup_config)
 
         restarter = hydra.utils.instantiate(cfg.algo.restarter)
@@ -91,22 +100,26 @@ class JEDiFactory:
         )
 
         # with jax.disable_jit():
-        repertoire, emitter_state, random_key = map_elites.init(
+        key, subkey = jax.random.split(key)
+
+        repertoire, emitter_state = map_elites.init(
             init_variables, 
             centroids, 
-            random_key,
+            subkey,
         )
 
         plot_prefix = f"{algo.gp.jedi_prefix}JEDi_" + str(cfg.algo.params.alpha)
 
         return (min_bd, 
                 max_bd, 
-                random_key, 
+                key, 
                 map_elites, 
                 emitter, 
                 repertoire, 
                 emitter_state,
-                plot_prefix)
+                plot_prefix,
+                scoring_fn,
+                )
 
     def plot_results(
         self,

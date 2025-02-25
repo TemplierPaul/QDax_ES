@@ -32,7 +32,7 @@ class EvosaxEmitterState(EmitterState):
     Emitter state for the CMA-ME emitter.
 
     Args:
-        random_key: a random key to handle stochastic operations. Used for
+        key: a random key to handle stochastic operations. Used for
             state update only, another key is used to emit. This might be
             subject to refactoring discussions in the future.
         cmaes_state: state of the underlying CMA-ES algorithm
@@ -41,7 +41,7 @@ class EvosaxEmitterState(EmitterState):
         emit_count: count the number of emission events.
     """
 
-    random_key: RNGKey
+    key: RNGKey
     es_state: EvoState
     es_params: EvoParams
     previous_fitnesses: Fitness
@@ -109,7 +109,7 @@ class EvosaxEmitter(Emitter):
     )
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -121,7 +121,7 @@ class EvosaxEmitter(Emitter):
 
         Args:
             genotypes: initial genotypes to add to the grid.
-            random_key: a random key to handle stochastic operations.
+            key: a random key to handle stochastic operations.
 
         Returns:
             The initial state of the emitter.
@@ -149,7 +149,7 @@ class EvosaxEmitter(Emitter):
         print(self.es)
 
         # Initialize the ES state
-        random_key, init_key = jax.random.split(random_key)
+        key, init_key = jax.random.split(key)
         es_params = self.es.default_params
         es_state = self.es.initialize(
             init_key, params=es_params
@@ -169,25 +169,24 @@ class EvosaxEmitter(Emitter):
         default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
 
         # return the initial state
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
 
         return (
             EvosaxEmitterState(
-                random_key=subkey,
+                key=subkey,
                 es_state=es_state, 
                 es_params=es_params,
                 previous_fitnesses=default_fitnesses,
                 novelty_archive=novelty_archive,
                 emit_count=0,
                 restart_state=restart_state,
-            ),
-            random_key,
+            )
         )
     
     def es_ask(
             self,
             emitter_state: EvosaxEmitterState,
-            random_key: RNGKey,
+            key: RNGKey,
     ):
         """
         Generate a new population of offspring.
@@ -195,12 +194,12 @@ class EvosaxEmitter(Emitter):
         es_state = emitter_state.es_state
         es_params = emitter_state.es_params
 
-        random_key, subkey = jax.random.split(random_key)
+        key, subkey = jax.random.split(key)
         genomes, es_state = self.es.ask(subkey, es_state, es_params)
 
         offspring = jax.vmap(self.reshaper.unflatten)(genomes)
 
-        return offspring, random_key
+        return offspring, key
     
     def restart_from(
             self, 
@@ -212,8 +211,8 @@ class EvosaxEmitter(Emitter):
         """
         init_mean = self.reshaper.flatten(init_genome)
         
-        random_key = emitter_state.random_key
-        random_key, subkey = jax.random.split(random_key)
+        key = emitter_state.key
+        key, subkey = jax.random.split(key)
 
         es_params = self.es.default_params
         es_state = self.es.initialize(
@@ -223,7 +222,7 @@ class EvosaxEmitter(Emitter):
 
         return emitter_state.replace(
             es_state=es_state,
-            random_key=random_key,
+            key=key,
         )
 
     def _restart_random(
@@ -234,8 +233,8 @@ class EvosaxEmitter(Emitter):
         """
         Restart from a random genome.
         """
-        random_key = emitter_state.random_key
-        random_key, subkey = jax.random.split(random_key)
+        key = emitter_state.key
+        key, subkey = jax.random.split(key)
 
         es_params = self.es.default_params
         es_state = self.es.initialize(
@@ -244,7 +243,7 @@ class EvosaxEmitter(Emitter):
 
         return emitter_state.replace(
             es_state=es_state,
-            random_key=random_key,
+            key=key,
         )
     
     def _restart_repertoire(
@@ -255,11 +254,12 @@ class EvosaxEmitter(Emitter):
         """
         Restart from a random cell in the repertoire.
         """
-        random_key = emitter_state.random_key
-        random_genotype, random_key = repertoire.sample(random_key, 1)
+        key = emitter_state.key
+        key, subkey = jax.random.split(key)
+        random_genotype = repertoire.sample(subkey, 1)
 
         emitter_state = emitter_state.replace(
-            random_key=random_key,
+            key=key,
         )
 
         emitter_state = self.restart_from(
@@ -411,10 +411,10 @@ class EvosaxEmitter(Emitter):
 
 
     def _post_update_emitter_state(
-        self, emitter_state, random_key: RNGKey, repertoire: MapElitesRepertoire
+        self, emitter_state, key: RNGKey, repertoire: MapElitesRepertoire
     ) -> EvosaxEmitterState:
         return emitter_state.replace(
-            random_key=random_key, previous_fitnesses=repertoire.fitnesses
+            key=key, previous_fitnesses=repertoire.fitnesses
         )
     
     # @partial(jax.jit, static_argnames=("self",))
@@ -423,7 +423,7 @@ class EvosaxEmitter(Emitter):
         self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: EvosaxEmitterState,
-        random_key: RNGKey,
+        key: RNGKey,
     ) -> Tuple[Genotype, RNGKey]:
         """
         Generate solutions to be evaluated and added to the archive.

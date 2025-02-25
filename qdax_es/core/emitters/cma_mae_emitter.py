@@ -50,16 +50,16 @@ class CMAMEAnnealingEmitter(CMAMEEmitter):
         )
 
     def _post_update_emitter_state(
-        self, emitter_state:EvosaxEmitterState, random_key: RNGKey, repertoire: MAERepertoire
+        self, emitter_state:EvosaxEmitterState, key: RNGKey, repertoire: MAERepertoire
     ) -> EvosaxEmitterState:
         return emitter_state.replace(
-            random_key=random_key, previous_fitnesses=repertoire.thresholds
+            key=key, previous_fitnesses=repertoire.thresholds
         )
 
     # @partial(jax.jit, static_argnames=("self",))
     def init(
         self,
-        random_key: RNGKey,
+        key: RNGKey,
         repertoire: MapElitesRepertoire,
         genotypes: Genotype,
         fitnesses: Fitness,
@@ -67,8 +67,8 @@ class CMAMEAnnealingEmitter(CMAMEEmitter):
         extra_scores: ExtraScores,
     ) -> Tuple[EvosaxEmitterState, RNGKey]:
         
-        emitter_state, random_key = super().init(
-            random_key=random_key,
+        emitter_state = super().init(
+            key=key,
             repertoire=repertoire,
             genotypes=genotypes,
             fitnesses=fitnesses,
@@ -79,6 +79,6 @@ class CMAMEAnnealingEmitter(CMAMEEmitter):
         default_thresholds = jnp.ones(self._centroids.shape[0]) * self.min_threshold
         emitter_state = emitter_state.replace(previous_fitnesses=default_thresholds)
 
-        return emitter_state, random_key
+        return emitter_state
     
     

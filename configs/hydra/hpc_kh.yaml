@@ -14,18 +14,19 @@ launcher:
   replace_hydra: hpc_basic
   hpc: ptemplie@login.cx3.hpc.imperial.ac.uk
   email: p.templier@imperial.ac.uk
-  job_name: TELO
-  walltime: 5:59:00
+  job_name: New_HP
+  walltime: 11:59:00
   nnodes: 1
   ncpus: 4
   mem: 16gb
   ngpus: 1
   gpu_type: L40S
-  njobs: 1
+  njobs: 2
   n_runs_per_job: 5
   add_seed: True
   container: latest
   run_jobs: true
+  # avoid_nodes: cx3-20-0
 
 
 # sweeper:
@@ -34,25 +35,51 @@ launcher:
 #     algo: dy_jedi, jedi
 #     algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
 #     # algo.params.alpha: decay
-#     algo/gp: wgp
+#     algo/gp: uniform
 
-# sweeper:
-#   params:
-#     task: kh_standard, kh_pointmaze, kh_snake
-#     # algo: es, me, pga_me
-#     algo: cmame, cmamae
+sweeper:
+  params:
+    task: kh_standard, kh_pointmaze, kh_snake
+    algo: es, pga_me, cmamae
+    # algo: pga_me
+    # algo: cmamae
+    # algo: cmame
 
 # sweeper:
 #   params:
 #     task: kh_standard, kh_pointmaze, kh_snake 
 #     algo: dy_jedi
-#     algo/gp: wgp
-#     algo.pool_size: 1, 16, 64, 256
+#     algo/gp: gp
+#     algo.pool_size: 16
+#     algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
+#     algo.params.min_score_spread: 10
+#     algo.params.min_bd_spread: 0.1
 
-sweeper:
-  params:
-    task: kh_standard, kh_snake 
-    algo: dy_jedi
-    algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
-    # algo.params.alpha: decay
-    algo/gp: mae
+# sweeper:
+#   params:
+#     task: kh_standard, kh_pointmaze, kh_snake 
+#     algo: jedi
+#     algo/gp: wgp, gp
+#     algo.pool_size: 16
+#     algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
+
+# sweeper:
+#   params:
+#     task: kh_standard #, kh_pointmaze, kh_snake 
+#     algo: dy_jedi
+#     algo/gp: wgp
+#     # algo.params.min_score_spread: 5, 10, 25
+#     # algo.params.min_bd_spread: 0.01, 0.05, 0.1, 0.5
+#     algo.params.min_score_spread: 10
+#     algo.params.min_bd_spread:  0.05
+#     algo.params.alpha: 0.5
+#     algo.pool_size: 16
+
+
+# sweeper:
+#   params:
+#     task: kh_standard, kh_snake 
+#     algo: dy_jedi
+#     algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
+#     # algo.params.alpha: decay
+#     algo/gp: mae

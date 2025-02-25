@@ -44,7 +44,7 @@ def get_pareto_indices(f1, f2, n_points= 10, max_depth=10):
     # Get first n_points
     return pareto_indices[:n_points]
 
-def stoch_get_pareto_indices(f1, f2, random_key, n_points= 10, max_depth=10):
+def stoch_get_pareto_indices(f1, f2, key, n_points= 10, max_depth=10):
     # jax.debug.print("f1: {}", f1.shape)
     # jax.debug.print("f2: {}", f2.shape)
     def pareto_indices_scan(carry, depth):
@@ -70,7 +70,7 @@ def stoch_get_pareto_indices(f1, f2, random_key, n_points= 10, max_depth=10):
 
     # Add uniform noise to pareto_depth
     noise = jax.random.uniform(
-        key=random_key, shape=f1.shape) * 1e-2
+        key=key, shape=f1.shape) * 1e-2
     # jax.debug.print("Noise: {}", noise.shape)
 
     pareto_depth += noise

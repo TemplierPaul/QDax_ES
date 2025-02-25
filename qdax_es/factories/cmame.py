@@ -4,6 +4,7 @@ import jax
 from evosax import Strategies
 import hydra 
 import wandb
+import warnings
 
 from qdax_es.core.custom_repertoire_mapelites import CustomMAPElites
 from qdax_es.core.containers.count_repertoire import CountMapElitesRepertoire
@@ -17,20 +18,31 @@ class CMAMEFactory:
     def build(self, cfg):
         task = cfg.task
         algo = cfg.algo
+        # assert algo.algo == "jedi", f"algo.algo should be jedi, got {algo.algo}"
 
-        batch_size = task.es_params.popsize
+        batch_size = task.es_params.popsize * algo.pool_size
         initial_batch = batch_size
         num_iterations = int(task.total_evaluations / batch_size / cfg.steps) 
         print("Iterations per step: ", num_iterations)
         print("Iterations: ", num_iterations*cfg.steps)
 
+        if hasattr(task, "legacy_spring"):
+            legacy_spring = task.legacy_spring
+        else:
+            legacy_spring = False
+            warnings.warn("Legacy spring not set. Defaulting to False")
+
         assert task.es_params.es_type in Strategies, f"{task.es_params.es_type} is not one of {Strategies.keys()}"
+
+        print("Algo: ", cfg.algo.plotting.algo_name)
 
         setup_config = {
             "seed": cfg.seed,
             "env": task.env_name,
+            "descriptors": task.descriptors,
             "episode_length": task.episode_length,
             "stochastic": task.stochastic,
+            "legacy_spring": legacy_spring,
             "policy_hidden_layer_sizes": task.network.policy_hidden_layer_sizes,
             "activation": task.network.activation,
             "initial_batch": initial_batch,
@@ -44,7 +56,7 @@ class CMAMEFactory:
             scoring_fn, 
             metrics_fn, 
             init_variables, 
-            random_key
+            key
         ) = setup_qd(setup_config)
 
         es_params = {
@@ -76,10 +88,12 @@ class CMAMEFactory:
         )
         
         # with jax.disable_jit():
-        repertoire, emitter_state, random_key = map_elites.init(
+        key, subkey = jax.random.split(key)
+
+        repertoire, emitter_state = map_elites.init(
             init_variables, 
             centroids, 
-            random_key,
+            key,
             repertoire_kwargs={}
         )
 
@@ -87,12 +101,14 @@ class CMAMEFactory:
 
         return (min_bd, 
                 max_bd, 
-                random_key, 
+                key, 
                 map_elites, 
                 emitter, 
                 repertoire, 
                 emitter_state,
-                plot_prefix)
+                plot_prefix,
+                scoring_fn,
+                )
 
     def plot_results(
         self,

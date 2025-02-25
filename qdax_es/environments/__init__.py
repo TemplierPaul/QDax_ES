@@ -12,7 +12,7 @@ from brax.v1.envs.wrappers import (
 
 
 from qdax.environments.base_wrappers import QDEnv, StateDescriptorResetWrapper
-from qdax.environments.bd_extractors import (
+from qdax.environments.descriptor_extractors import (
     get_feet_contact_proportion,
     get_final_xy_position,
 )
@@ -142,7 +142,7 @@ _qdax_custom_envs = {
 }
 
 
-def create_no_legacy(
+def create(
     env_name: str,
     episode_length: int = 1000,
     action_repeat: int = 1,
@@ -209,4 +209,4 @@ def create_fn_no_legacy(env_name: str, **kwargs: Any) -> Callable[..., brax.envs
     Please use namespace to avoid confusion between this function and
     brax.envs.create_fn.
     """
-    return functools.partial(create_no_legacy, env_name, **kwargs)
+    return functools.partial(create, env_name, **kwargs)

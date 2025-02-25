@@ -14,29 +14,28 @@ launcher:
   replace_hydra: hpc_basic
   hpc: ptemplie@login.cx3.hpc.imperial.ac.uk
   email: p.templier@imperial.ac.uk
-  job_name: TELO
-  walltime: 11:50:00
+  job_name: Lisa
+  walltime: 11:59:00
   nnodes: 1
   ncpus: 4
-  mem: 16gb
+  mem: 32gb
   ngpus: 1
   gpu_type: L40S
   njobs: 2
-  n_runs_per_job: 3
+  n_runs_per_job: 1
   add_seed: True
   container: latest
   run_jobs: true
 
 
+
 # sweeper:
 #   params:
-#     # task: kh_standard, kh_pointmaze, kh_snake 
-#     # task: halfcheetah, walker_2d, antmaze
-#     task: kh_standard, kh_pointmaze, kh_snake, halfcheetah, walker_2d, antmaze
-#     algo: dy_jedi, jedi
+#     task: halfcheetah
+#     algo: dy_jedi
 #     algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
 #     # algo.params.alpha: decay
-#     algo/gp: wgp
+#     algo/gp: wgp, gp
 
 # sweeper:
 #   params:
@@ -44,20 +43,20 @@ launcher:
 #     # algo: es, me, pga_me
 #     algo: cmame, cmamae
 
-sweeper:
-  params:
-    task: halfcheetah, walker_2d, antmaze 
-    algo: dy_jedi
-    algo/gp: wgp
-    algo.pool_size: 1, 16, 64, 256
+# sweeper:
+#   params:
+#     task: halfcheetah, walker_2d, antmaze 
+#     algo: dy_jedi
+#     algo/gp: wgp
+#     algo.pool_size: 1, 16, 64, 256
 
 # sweeper:
 #   params:
-#     task: kh_standard, kh_pointmaze, kh_snake, halfcheetah, walker_2d, antmaze
-#     # task: halfcheetah, walker_2d, antmaze
-#     # algo: cmame, cmamae
-#     algo: es, ns_es
-#     # algo: me, pga_me
+#     task: halfcheetah
+#     # algo: pga_me
+#     # algo: cmamae 
+#     # algo: cmame
+#     algo: es
 
 # sweeper:
 #   params:
@@ -69,3 +68,17 @@ sweeper:
 #     # algo.params.alpha: decay
 #     algo/gp: wgp
 #     algo.pool_size: 1, 16, 64, 256
+
+sweeper:
+  params:
+    # task: halfcheetah
+    task: halfcheetah, walker_2d
+    task.stochastic: true
+    task.legacy_spring: true
+    task.network.policy_hidden_layer_sizes: "[128, 128]"
+    task.network.activation: relu
+    algo: dy_jedi
+    algo/gp: wgp
+    algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9, decay
+    task.total_evaluations: 1e6
+    wandb.project: lisa_jedi

@@ -1,5 +1,6 @@
 --find-links https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-qdax[cuda12]
+# qdax[cuda12]
+git+https://github.com/adaptive-intelligent-robotics/QDax.git@develop#egg=qdax[cuda_12]
 # jax[cuda12_pip]==0.4.28
 evosax==0.1.6
 jax==0.4.28
