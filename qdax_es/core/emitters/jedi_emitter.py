@@ -6,7 +6,7 @@ from chex import ArrayTree
 
 import jax
 import jax.numpy as jnp
-from jax.tree_util import tree_map
+from jax.tree_util import tree.map
 
 from optax.schedules import linear_schedule
 
@@ -30,17 +30,17 @@ EPSILON = 1e-8
 
 # Helper function to get a sub pytree
 def _get_sub_pytree(pytree: ArrayTree, start: int, end: int) -> ArrayTree:
-    return jax.tree_util.tree_map(lambda x: jax.lax.dynamic_slice_in_dim(x, start, (end-start), 0), pytree)
+    return jax.tree.map(lambda x: jax.lax.dynamic_slice_in_dim(x, start, (end-start), 0), pytree)
 
 def split(array, n):
     return jnp.array(jnp.split(array, n, axis=0))
     
 def split_tree(tree, n):
-    return jax.tree_map(lambda x: split(x, n), tree)
+    return jax.tree.map(lambda x: split(x, n), tree)
 
 
 def net_shape(net):
-    return jax.tree_map(lambda x: x.shape, net)
+    return jax.tree.map(lambda x: x.shape, net)
 
 def get_closest_genotype(
     bd: Descriptor,
@@ -57,7 +57,7 @@ def get_closest_genotype(
     )
     index = jnp.argmin(distances)
     start_bd = repertoire.descriptors[index]
-    start_genome = tree_map(
+    start_genome = tree.map(
         lambda x: x[index], repertoire.genotypes
     )
     return start_genome, start_bd

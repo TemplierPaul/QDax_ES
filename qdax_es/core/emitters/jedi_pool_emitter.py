@@ -198,7 +198,7 @@ class UniformJEDiPoolEmitter(Emitter):
         # jax.debug.print("offspring batch: {}", net_shape(all_offsprings))
 
         # concatenate offsprings together: remove the first dimension
-        offsprings = jax.tree_map(
+        offsprings = jax.tree.map(
             lambda x: jnp.concatenate(x, axis=0),
             all_offsprings
         )

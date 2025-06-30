@@ -1,0 +1,38 @@
+defaults:
+  - default_qd # Inherit all settings from default_qd
+  - _self_ # Allow overriding inherited values
+
+plotting:
+  algo_name: MAP-Elites
+
+# Factory
+factory: 
+  _target_: qdax_bench.factories.me.MEFactory
+
+repertoire_init:
+  _target_: qdax_es.core.containers.count_repertoire.CountMapElitesRepertoire.init
+  _partial_: true
+
+emitter: 
+  _target_: qdax.core.emitters.standard_emitters.MixingEmitter
+  # _partial_: true
+  variation_fn: 
+    _target_: qdax.core.emitters.mutation_operators.isoline_variation
+    _partial_: true
+    line_sigma: ${algo.params.line_sigma}
+    iso_sigma: ${algo.params.iso_sigma}
+  batch_size: ${algo.params.batch_size}
+  variation_percentage: 1.0
+  mutation_fn: null
+
+initial_batch: ${algo.params.batch_size}
+
+group_defaults:
+  kheperax:
+    iso_sigma: 0.2
+    line_sigma: 0.0
+    batch_size: 64  
+  brax:
+    iso_sigma: 0.005
+    line_sigma: 0.05
+    batch_size: 1024

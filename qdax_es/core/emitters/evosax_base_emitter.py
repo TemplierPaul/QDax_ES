@@ -21,15 +21,19 @@ from qdax.core.containers.mapelites_repertoire import (
 )
 from qdax_es.core.containers.novelty_archive import NoveltyArchive, DummyNoveltyArchive
 
-from evosax import EvoState, EvoParams, Strategies
+from evosax.algorithms.base import (
+    State as EvoState,
+    Params as EvoParams,
+)
+from evosax.algorithms import algorithms as Strategies
 
-from qdax_es.utils.evosax_interface import ANNReshaper, DummyReshaper
 
 from qdax_es.utils.restart import RestartState, DummyRestarter
+from qdax_es.utils.evosax_interface import net_shape
 
 class EvosaxEmitterState(EmitterState):
     """
-    Emitter state for the CMA-ME emitter.
+    Emitter state for the ES emitter.
 
     Args:
         key: a random key to handle stochastic operations. Used for
@@ -64,7 +68,8 @@ class EvosaxEmitter(Emitter):
     def __init__(
         self,
         centroids: Centroid,
-        es_hp = {},
+        population_size,
+        std_init=0.05,
         es_type="CMA_ES",
         ns_es=False,
         novelty_archive_size=0,
@@ -72,18 +77,20 @@ class EvosaxEmitter(Emitter):
             [Genotype, RNGKey], Tuple[Fitness, Descriptor, ExtraScores, RNGKey]
         ]=None,
         restarter = None,
+        init_variables_func: Callable[[RNGKey], Genotype] = None,
     ):
         """
         Initialize the ES emitter.
         """
         
-        self._batch_size = es_hp["popsize"]
-        self.es_hp = es_hp
+        self._batch_size = population_size
+        self.std_init = std_init
         self.es_type = es_type
         self._centroids = centroids
         self.novelty_archive_size = novelty_archive_size
         self.novelty_nearest_neighbors = 10
         self._num_descriptors = centroids.shape[1]
+        self.init_variables_func = init_variables_func
 
         if restarter is None:
             restarter = DummyRestarter()
@@ -94,19 +101,13 @@ class EvosaxEmitter(Emitter):
 
         # Delay until we have genomes
         self.es = None
-        self.reshaper = None
 
         self.ranking_criteria = self._fitness_criteria
         if ns_es:
             self.ranking_criteria = self._novelty_criteria
 
-
         self.restart = self._restart_random
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
     def init(
         self,
         key: RNGKey,
@@ -127,33 +128,31 @@ class EvosaxEmitter(Emitter):
             The initial state of the emitter.
         """
         restart_state = self.restarter.init()
-
-        # Check if initial genotypes are ANNs or vectors
-        if isinstance(genotypes, jnp.ndarray):
-            print("Using DummyReshaper")
-            self.reshaper = DummyReshaper()
-        else:
-            print("Using ANNReshaper")
-            if jax.tree_util.tree_leaves(genotypes)[0].shape[0] > 1:
-                genotypes = jax.tree_util.tree_map(
-                    lambda x: x[0],
-                    genotypes,
-                )
-            self.reshaper = ANNReshaper.init(genotypes)
+        first_genotype = jax.tree.map(lambda x: x[0], genotypes)
 
         self.es = Strategies[self.es_type](
-            num_dims=self.reshaper.genotype_dim,
-            # popsize=self.batch_size,
-            **self.es_hp,
+            population_size=self._batch_size,
+            solution=first_genotype
         )
         print(self.es)
 
         # Initialize the ES state
         key, init_key = jax.random.split(key)
         es_params = self.es.default_params
-        es_state = self.es.initialize(
-            init_key, params=es_params
+        # Replace std_init
+        es_params = es_params.replace(
+            std_init=self.std_init
         )
+
+        es_state = self.es.init(
+            init_key, 
+            mean=first_genotype,
+            params=es_params
+        )   
+
+        genome_dim = self.es._ravel_solution(first_genotype).shape
+        print(f"Genome dimension: {genome_dim}")
+        # print(f"Net shape: {net_shape(genome_dim)}")
 
         # Create empty Novelty archive
         if self.novelty_archive_size > 0:
@@ -195,9 +194,7 @@ class EvosaxEmitter(Emitter):
         es_params = emitter_state.es_params
 
         key, subkey = jax.random.split(key)
-        genomes, es_state = self.es.ask(subkey, es_state, es_params)
-
-        offspring = jax.vmap(self.reshaper.unflatten)(genomes)
+        offspring, es_state = self.es.ask(subkey, es_state, es_params)
 
         return offspring, key
     
@@ -209,21 +206,25 @@ class EvosaxEmitter(Emitter):
         """
         Restart the ES with a new mean.
         """
-        init_mean = self.reshaper.flatten(init_genome)
         
         key = emitter_state.key
         key, subkey = jax.random.split(key)
 
-        es_params = self.es.default_params
-        es_state = self.es.initialize(
-            subkey, params=es_params
+        es_params = emitter_state.es_params
+        es_state = self.es.init(
+            subkey,
+            mean=init_genome,
+            params=es_params
         )
-        es_state = es_state.replace(mean=init_mean)
 
-        return emitter_state.replace(
+        emitter_state = emitter_state.replace(
             es_state=es_state,
-            key=key,
+            key=key
         )
+
+        # print("Restart from", type(emitter_state.es_state))
+
+        return emitter_state
 
     def _restart_random(
             self, 
@@ -236,15 +237,19 @@ class EvosaxEmitter(Emitter):
         key = emitter_state.key
         key, subkey = jax.random.split(key)
 
-        es_params = self.es.default_params
-        es_state = self.es.initialize(
-            subkey, params=es_params
+        # Generate a random genotype
+        genotypes = self.init_variables_func(subkey)
+        first_genotype = jax.tree.map(lambda x: x[0], genotypes)
+
+        emitter_state = self.restart_from(
+            emitter_state.replace(key=key),
+            first_genotype,
         )
 
-        return emitter_state.replace(
-            es_state=es_state,
-            key=key,
-        )
+        # print("Random restart", type(emitter_state.es_state))
+
+        return emitter_state
+        
     
     def _restart_repertoire(
             self,
@@ -283,17 +288,23 @@ class EvosaxEmitter(Emitter):
         """
         Update the ES with the fitnesses of the offspring.
         """
-        genomes = jax.vmap(self.reshaper.flatten)(offspring)
-        
         es_state = emitter_state.es_state
         es_params = emitter_state.es_params
+        key, subkey = jax.random.split(emitter_state.key)
 
         fitnesses = - jnp.array(fitnesses) # Maximise
 
-        new_es_state = self.es.tell(genomes, fitnesses, es_state, es_params)
+        new_es_state, _ = self.es.tell(
+            subkey, 
+            population=offspring,
+            fitness=fitnesses, 
+            state=es_state, 
+            params=es_params
+            )
 
         return emitter_state.replace(
             es_state=new_es_state,
+            key=key,
         )
     
     """Defines how the genotypes should be sorted. Impacts the update
@@ -413,36 +424,10 @@ class EvosaxEmitter(Emitter):
     def _post_update_emitter_state(
         self, emitter_state, key: RNGKey, repertoire: MapElitesRepertoire
     ) -> EvosaxEmitterState:
+        # From (1024, 1) to (1024,)
+        previous_fitnesses = jnp.ravel(repertoire.fitnesses)
         return emitter_state.replace(
-            key=key, previous_fitnesses=repertoire.fitnesses
+            key=key, previous_fitnesses=previous_fitnesses
         )
     
-    # @partial(jax.jit, static_argnames=("self",))
-    @abstractmethod
-    def emit(
-        self,
-        repertoire: Optional[MapElitesRepertoire],
-        emitter_state: EvosaxEmitterState,
-        key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
-        """
-        Generate solutions to be evaluated and added to the archive.
-        """
-        pass
-
-
-    # @partial(jax.jit, static_argnames=("self",))
-    @abstractmethod
-    def state_update(
-        self,
-        emitter_state: EvosaxEmitterState,
-        repertoire: MapElitesRepertoire,
-        genotypes: Genotype,
-        fitnesses: Fitness,
-        descriptors: Descriptor,
-        extra_scores: Optional[ExtraScores] = None,
-    ) -> Optional[EmitterState]:
-        """
-        Update the state of the emitter.
-        """
-        pass
+   

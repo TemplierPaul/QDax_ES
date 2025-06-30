@@ -93,7 +93,7 @@ class CMAMEFactory:
         repertoire, emitter_state = map_elites.init(
             init_variables, 
             centroids, 
-            key,
+            subkey,
             repertoire_kwargs={}
         )
 

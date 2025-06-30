@@ -45,70 +45,13 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
     def total_count(self):
         return self.count.sum()
 
-    def save(self, path: str = "./") -> None:
-        """Saves the repertoire on disk in the form of .npy files.
-
-        Flattens the genotypes to store it with .npy format. Supposes that
-        a user will have access to the reconstruction function when loading
-        the genotypes.
-
-        Args:
-            path: Path where the data will be saved. Defaults to "./".
-        """
-
-        def flatten_genotype(genotype: Genotype) -> jnp.ndarray:
-            flatten_genotype, _ = ravel_pytree(genotype)
-            return flatten_genotype
-
-        # flatten all the genotypes
-        flat_genotypes = jax.vmap(flatten_genotype)(self.genotypes)
-
-        # save data
-        jnp.save(path + "genotypes.npy", flat_genotypes)
-        jnp.save(path + "fitnesses.npy", self.fitnesses)
-        jnp.save(path + "descriptors.npy", self.descriptors)
-        jnp.save(path + "centroids.npy", self.centroids)
-        jnp.save(path + "count.npy", self.count)
-
-    @classmethod
-    def load(
-        cls, reconstruction_fn: Callable, path: str = "./"
-    ) -> CountMapElitesRepertoire:
-        """Loads a MAP Elites Repertoire.
-
-        Args:
-            reconstruction_fn: Function to reconstruct a PyTree
-                from a flat array.
-            path: Path where the data is saved. Defaults to "./".
-
-        Returns:
-            An MAP Elites Repertoire.
-        """
-
-        flat_genotypes = jnp.load(path + "genotypes.npy")
-        genotypes = jax.vmap(reconstruction_fn)(flat_genotypes)
-
-        fitnesses = jnp.load(path + "fitnesses.npy")
-        descriptors = jnp.load(path + "descriptors.npy")
-        centroids = jnp.load(path + "centroids.npy")
-        count = jnp.load(path + "count.npy")
-
-        return cls(
-            genotypes=genotypes,
-            fitnesses=fitnesses,
-            descriptors=descriptors,
-            centroids=centroids,
-            count=count,
-        )
-
-    @jax.jit
-    def add(
+    def add(  # type: ignore
         self,
         batch_of_genotypes: Genotype,
         batch_of_descriptors: Descriptor,
         batch_of_fitnesses: Fitness,
         batch_of_extra_scores: Optional[ExtraScores] = None,
-    ) -> CountMapElitesRepertoire:
+    ) -> MapElitesRepertoire:
         """
         Add a batch of elements to the repertoire.
 
@@ -127,18 +70,25 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
             The updated MAP-Elites repertoire.
         """
 
+        if batch_of_extra_scores is None:
+            batch_of_extra_scores = {}
+
+        filtered_batch_of_extra_scores = self.filter_extra_scores(batch_of_extra_scores)
+
         batch_of_indices = get_cells_indices(batch_of_descriptors, self.centroids)
         batch_of_indices = jnp.expand_dims(batch_of_indices, axis=-1)
-        batch_of_fitnesses = jnp.expand_dims(batch_of_fitnesses, axis=-1)
 
-        num_centroids = self.centroids.shape[0]
 
         count = self.count + jnp.bincount(
             batch_of_indices.squeeze(axis=-1),
             minlength=len(self.count),
             length=len(self.count),
         )
-        # count = self.count + self._count(batch_of_indices)
+
+        num_centroids = self.centroids.shape[0]
+        batch_of_fitnesses = jnp.reshape(
+            batch_of_fitnesses, (batch_of_descriptors.shape[0], 1)
+        )
 
         # get fitness segment max
         best_fitnesses = jax.ops.segment_max(
@@ -155,10 +105,7 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
         )
 
         # get addition condition
-        repertoire_fitnesses = jnp.expand_dims(self.fitnesses, axis=-1)
-        current_fitnesses = jnp.take_along_axis(
-            repertoire_fitnesses, batch_of_indices, 0
-        )
+        current_fitnesses = jnp.take_along_axis(self.fitnesses, batch_of_indices, 0)
         addition_condition = batch_of_fitnesses > current_fitnesses
 
         # assign fake position when relevant : num_centroids is out of bound
@@ -167,7 +114,7 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
         )
 
         # create new repertoire
-        new_repertoire_genotypes = jax.tree_util.tree_map(
+        new_repertoire_genotypes = jax.tree.map(
             lambda repertoire_genotypes, new_genotypes: repertoire_genotypes.at[
                 batch_of_indices.squeeze(axis=-1)
             ].set(new_genotypes),
@@ -177,10 +124,19 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
 
         # compute new fitness and descriptors
         new_fitnesses = self.fitnesses.at[batch_of_indices.squeeze(axis=-1)].set(
-            batch_of_fitnesses.squeeze(axis=-1)
+            batch_of_fitnesses
         )
         new_descriptors = self.descriptors.at[batch_of_indices.squeeze(axis=-1)].set(
             batch_of_descriptors
+        )
+
+        # update extra scores
+        new_extra_scores = jax.tree.map(
+            lambda repertoire_scores, new_scores: repertoire_scores.at[
+                batch_of_indices.squeeze(axis=-1)
+            ].set(new_scores),
+            self.extra_scores,
+            filtered_batch_of_extra_scores,
         )
 
         new_repertoire = self.__class__(
@@ -189,11 +145,12 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
             descriptors=new_descriptors,
             centroids=self.centroids,
             count=count,
+            extra_scores=new_extra_scores,
+            keys_extra_scores=self.keys_extra_scores,
         )
 
         return new_repertoire
 
-    @jax.jit
     def __add__(
         self,
         other_repertoire: CountMapElitesRepertoire,
@@ -204,7 +161,7 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
         to_replace = other_repertoire.fitnesses > self.fitnesses
 
         new_genotypes = jax.vmap(
-            lambda i: jax.tree_util.tree_map(
+            lambda i: jax.tree.map(
                 lambda x, y: to_replace[i] * y[i] + (1 - to_replace[i]) * x[i],
                 self.genotypes,
                 other_repertoire.genotypes,
@@ -216,7 +173,7 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
         )
 
         new_descriptors = jax.vmap(
-            lambda i: jax.tree_util.tree_map(
+            lambda i: jax.tree.map(
                 lambda x, y: to_replace[i] * y[i] + (1 - to_replace[i]) * x[i],
                 self.descriptors,
                 other_repertoire.descriptors,
@@ -234,58 +191,12 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
         )
 
     @classmethod
-    def init(
-        cls,
-        genotypes: Genotype,
-        fitnesses: Fitness,
-        descriptors: Descriptor,
-        centroids: Centroid,
-        extra_scores: Optional[ExtraScores] = None,
-    ) -> CountMapElitesRepertoire:
-        """
-        Initialize a Map-Elites repertoire with an initial population of genotypes.
-        Requires the definition of centroids that can be computed with any method
-        such as CVT or Euclidean mapping.
-
-        Note: this function has been kept outside of the object MapElites, so it can
-        be called easily called from other modules.
-
-        Args:
-            genotypes: initial genotypes, pytree in which leaves
-                have shape (batch_size, num_features)
-            fitnesses: fitness of the initial genotypes of shape (batch_size,)
-            descriptors: descriptors of the initial genotypes
-                of shape (batch_size, num_descriptors)
-            centroids: tesselation centroids of shape (batch_size, num_descriptors)
-            extra_scores: unused extra_scores of the initial genotypes
-
-        Returns:
-            an initialized MAP-Elite repertoire
-        """
-        warnings.warn(
-            (
-                "This type of repertoire does not store the extra scores "
-                "computed by the scoring function"
-            ),
-            stacklevel=2,
-        )
-
-        # retrieve one genotype from the population
-        first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
-
-        # create a repertoire with default values
-        repertoire = cls.init_default(genotype=first_genotype, centroids=centroids)
-
-        # add initial population to the repertoire
-        new_repertoire = repertoire.add(genotypes, descriptors, fitnesses, extra_scores)
-
-        return new_repertoire  # type: ignore
-
-    @classmethod
     def init_default(
         cls,
         genotype: Genotype,
         centroids: Centroid,
+        one_extra_score: Optional[ExtraScores] = None,
+        keys_extra_scores: Tuple[str, ...] = (),
     ) -> CountMapElitesRepertoire:
         """Initialize a Map-Elites repertoire with an initial population of
         genotypes. Requires the definition of centroids that can be computed
@@ -297,25 +208,41 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
         Args:
             genotype: the typical genotype that will be stored.
             centroids: the centroids of the repertoire
-
+            keys_extra_scores: keys of the extra scores to store in the repertoire
+            one_extra_score: a single extra score to be used for initialization.
         Returns:
             A repertoire filled with default values.
         """
+
+        if one_extra_score is None:
+            one_extra_score = {}
+
+        one_extra_score = {
+            key: value
+            for key, value in one_extra_score.items()
+            if key in keys_extra_scores
+        }
 
         # get number of centroids
         num_centroids = centroids.shape[0]
 
         # default fitness is -inf
-        default_fitnesses = -jnp.inf * jnp.ones(shape=num_centroids)
+        default_fitnesses = -jnp.inf * jnp.ones(shape=(num_centroids, 1))
 
         # default genotypes is all 0
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
             genotype,
         )
 
         # default descriptor is all zeros
         default_descriptors = jnp.zeros_like(centroids)
+
+        # default extra scores is empty dict
+        default_extra_scores = jax.tree.map(
+            lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
+            one_extra_score,
+        )
 
         default_count = jnp.zeros(shape=num_centroids)
 
@@ -325,7 +252,10 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
             descriptors=default_descriptors,
             centroids=centroids,
             count=default_count,
+            extra_scores=default_extra_scores,
+            keys_extra_scores=keys_extra_scores,
         )
+    
     
     def plot(
             self,
@@ -385,7 +315,7 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
     #     """Record a video of the best individual in the repertoire."""
     #     best_idx = jnp.argmax(self.fitnesses)
 
-    #     elite = jax.tree_util.tree_map(lambda x: x[best_idx], self.genotypes)
+    #     elite = jax.tree.map(lambda x: x[best_idx], self.genotypes)
 
     #     jit_env_reset = jax.jit(env.reset)
     #     jit_env_step = jax.jit(env.step)
@@ -410,7 +340,7 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
     def _brax_video(self, config):
         """Record a video of the best individual in the repertoire with brax"""
         best_idx = jnp.argmax(self.fitnesses)
-        elite = jax.tree_util.tree_map(lambda x: x[best_idx], self.genotypes)
+        elite = jax.tree.map(lambda x: x[best_idx], self.genotypes)
 
         env = config["video_recording"]["env"]
         policy_network = config["video_recording"]["policy_network"]
@@ -436,7 +366,7 @@ class CountMapElitesRepertoire(MapElitesRepertoire):
     def _kheperax_video(self, config):
         """Record a video of the best individual in the repertoire with Kheperax"""
         best_idx = jnp.argmax(self.fitnesses)
-        elite = jax.tree_util.tree_map(lambda x: x[best_idx], self.genotypes)
+        elite = jax.tree.map(lambda x: x[best_idx], self.genotypes)
 
         env = config["video_recording"]["env"]
         policy_network = config["video_recording"]["policy_network"]

@@ -38,13 +38,12 @@ class EvosaxEmitterAll(EvosaxEmitter):
         """
         return self._batch_size
 
-    # @partial(jax.jit, static_argnames=("self",))
     def emit(
-            self,
+        self,
         repertoire: Optional[MapElitesRepertoire],
         emitter_state: EvosaxEmitterState,
         key: RNGKey,
-    ) -> Tuple[Genotype, RNGKey]:
+    ) -> Tuple[Genotype, ExtraScores]:
         """
         Generate solutions to be evaluated and added to the archive.
         """
@@ -52,73 +51,7 @@ class EvosaxEmitterAll(EvosaxEmitter):
         offspring, key = self.es_ask(emitter_state, key)
 
         return offspring, {}
-    
-    # @partial(jax.jit, static_argnames=("self",))
-    # def state_update(
-    #     self,
-    #     emitter_state: EvosaxEmitterState,
-    #     repertoire: MapElitesRepertoire,
-    #     genotypes: Genotype,
-    #     fitnesses: Fitness,
-    #     descriptors: Descriptor,
-    #     extra_scores: Optional[ExtraScores] = None,
-    # ) -> Optional[EvosaxEmitterState]:
-        
-    #     """
-    #     Update the state of the emitter.
-    #     """
-
-    #     scores = self.ranking_criteria(
-    #         emitter_state=emitter_state,
-    #         repertoire=repertoire,
-    #         genotypes=genotypes,
-    #         fitnesses=fitnesses,
-    #         descriptors=descriptors,
-    #         extra_scores=extra_scores,
-    #         novelty_archive=emitter_state.novelty_archive,
-    #     )
-
-    #     emitter_state = self.es_tell(emitter_state, genotypes, scores)
-        
-    #     # Updating novelty archive
-    #     novelty_archive = emitter_state.novelty_archive.update(descriptors)
-    #     emitter_state = emitter_state.replace(novelty_archive=novelty_archive)
-        
-    #     emitter_state = self.restarter.update(
-    #         emitter_state,
-    #         scores
-    #     )
-    #     restart_bool = self.restarter.restart_criteria(
-    #         emitter_state=emitter_state,
-    #         scores=scores,
-    #         repertoire=repertoire,
-    #         genotypes=genotypes,
-    #         fitnesses=fitnesses,
-    #         descriptors=descriptors,
-    #         extra_scores=extra_scores,
-    #         novelty_archive=emitter_state.novelty_archive,
-    #     )
-
-    #     emitter_state = jax.lax.cond(
-    #         restart_bool,
-    #         lambda x: self.restarter.reset(x),
-    #         lambda x: x,
-    #         emitter_state
-    #     )
-
-    #     emitter_state = jax.lax.cond(
-    #         restart_bool,
-    #         lambda x: self.restart(repertoire=repertoire, emitter_state=x),
-    #         lambda x: x,
-    #         emitter_state
-    #     )
-
-    #     key, subkey = jax.random.split(emitter_state.key)
-    #     emitter_state = self._post_update_emitter_state(emitter_state, subkey, repertoire)
-
-    #     return emitter_state
-    
-    # @partial(jax.jit, static_argnames=("self",))
+   
     def state_update(
         self,
         emitter_state: EvosaxEmitterState,
@@ -146,7 +79,6 @@ class EvosaxEmitterAll(EvosaxEmitter):
 
         return emitter_state
     
-    # @partial(jax.jit, static_argnames=("self",))
     def start_state_update(
         self,
         emitter_state: EvosaxEmitterState,
@@ -215,6 +147,7 @@ class EvosaxEmitterAll(EvosaxEmitter):
         """
         Finish the update with the restart step.
         """
+        # print("Finish", type(emitter_state.es_state))
         
         emitter_state = jax.lax.cond(
             restart_bool,
@@ -247,7 +180,6 @@ class EvosaxEmitterCenter(EvosaxEmitter):
         """
         return self._batch_size + 1
     
-    # @partial(jax.jit, static_argnames=("self",))
     def emit(
         self,
         repertoire: Optional[MapElitesRepertoire],
@@ -263,7 +195,6 @@ class EvosaxEmitterCenter(EvosaxEmitter):
 
         return offspring, {}
     
-    # @partial(jax.jit, static_argnames=("self",))
     def _external_novelty_state_update(
         self,
         emitter_state: EvosaxEmitterState,
@@ -334,7 +265,6 @@ class EvosaxEmitterCenter(EvosaxEmitter):
 
         return emitter_state, pop_descriptors
 
-    # @partial(jax.jit, static_argnames=("self",))
     def state_update(
         self,
         emitter_state: EvosaxEmitterState,

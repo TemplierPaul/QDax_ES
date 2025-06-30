@@ -1,9 +1,0 @@
-defaults:
-  - kh_pointmaze # Inherit all settings from standard.yaml
-  - _self_ # Allow overriding inherited values
-
-env_name: kheperax_pointmaze
-task_name: Debug (Kheperax PointMaze)
-
-total_evaluations: 3e3
-

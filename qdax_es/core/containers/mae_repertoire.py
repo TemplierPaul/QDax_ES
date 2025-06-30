@@ -168,7 +168,7 @@ class MAERepertoire(CountMapElitesRepertoire):
         )
 
         # create new repertoire
-        new_repertoire_genotypes = jax.tree_util.tree_map(
+        new_repertoire_genotypes = jax.tree.map(
             lambda repertoire_genotypes, new_genotypes: repertoire_genotypes.at[
                 batch_of_indices.squeeze(axis=-1)
             ].set(new_genotypes),
@@ -214,7 +214,7 @@ class MAERepertoire(CountMapElitesRepertoire):
         to_replace = other_repertoire.fitnesses > self.fitnesses
 
         new_genotypes = jax.vmap(
-            lambda i: jax.tree_util.tree_map(
+            lambda i: jax.tree.map(
                 lambda x, y: to_replace[i] * y[i] + (1 - to_replace[i]) * x[i],
                 self.genotypes,
                 other_repertoire.genotypes,
@@ -230,7 +230,7 @@ class MAERepertoire(CountMapElitesRepertoire):
         )
 
         new_descriptors = jax.vmap(
-            lambda i: jax.tree_util.tree_map(
+            lambda i: jax.tree.map(
                 lambda x, y: to_replace[i] * y[i] + (1 - to_replace[i]) * x[i],
                 self.descriptors,
                 other_repertoire.descriptors,
@@ -289,7 +289,7 @@ class MAERepertoire(CountMapElitesRepertoire):
         )
 
         # retrieve one genotype from the population
-        first_genotype = jax.tree_util.tree_map(lambda x: x[0], genotypes)
+        first_genotype = jax.tree.map(lambda x: x[0], genotypes)
 
         # create a repertoire with default values
         repertoire = cls.init_default(genotype=first_genotype, centroids=centroids, archive_learning_rate=archive_learning_rate, min_threshold=min_threshold)
@@ -335,7 +335,7 @@ class MAERepertoire(CountMapElitesRepertoire):
             default_thresholds = jnp.full_like(default_fitnesses, -jnp.inf)
 
         # default genotypes is all 0
-        default_genotypes = jax.tree_util.tree_map(
+        default_genotypes = jax.tree.map(
             lambda x: jnp.zeros(shape=(num_centroids,) + x.shape, dtype=x.dtype),
             genotype,
         )

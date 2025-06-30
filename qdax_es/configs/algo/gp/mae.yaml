@@ -1,0 +1,15 @@
+# Weighted GP JEDi
+
+jedi_prefix: "WAE-"
+emitter: 
+  _target_: qdax_es.core.emitters.jedi_pool_emitter.GPJEDiPoolEmitter
+  _partial_: true
+  pool_size: ${algo.pool_size}
+
+repertoire_init:
+  _target_: qdax_es.core.containers.gp_mae_repertoire.GPMAERepertoire.init
+  _partial_: true
+  weighted: true
+  # max_count: 1e3
+  min_threshold: null
+  archive_learning_rate: 0.1

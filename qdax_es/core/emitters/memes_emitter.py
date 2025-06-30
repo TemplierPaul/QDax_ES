@@ -39,16 +39,16 @@ def added_repertoire(
         boolean for each genotype
     """
     cells = get_cells_indices(descriptors, repertoire.centroids)
-    repertoire_genotypes = jax.tree_util.tree_map(
+    repertoire_genotypes = jax.tree.map(
         lambda x: x[cells], repertoire.genotypes
     )
-    added = jax.tree_util.tree_map(
+    added = jax.tree.map(
         lambda x, y: jnp.equal(x, y), genotypes, repertoire_genotypes
     )
-    added = jax.tree_util.tree_map(
+    added = jax.tree.map(
         lambda x: jnp.reshape(x, (descriptors.shape[0], -1)), added
     )
-    added = jax.tree_util.tree_map(lambda x: jnp.all(x, axis=1), added)
+    added = jax.tree.map(lambda x: jnp.all(x, axis=1), added)
     final_added = jnp.array(jax.tree_util.tree_leaves(added))
     final_added = jnp.all(final_added, axis=0)
     return final_added
@@ -198,7 +198,7 @@ class MEMESPoolEmitter(Emitter):
         # jax.debug.print("offspring batch: {}", net_shape(all_offsprings))
 
         # concatenate offsprings together: remove the first dimension
-        offsprings = jax.tree_map(
+        offsprings = jax.tree.map(
             lambda x: jnp.concatenate(x, axis=0),
             all_offsprings
         )

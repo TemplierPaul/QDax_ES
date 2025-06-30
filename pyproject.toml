@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qdax_es"
+version = "0.1.0"
+description = "QDax with Evosax integration"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Paul Templier", email = "templier.paul@gmail.com" }]
+requires-python = ">=3.8"
+keywords = [
+  "Evolution Strategies",
+  "Quality-Diversity",
+  "NeuroEvolution",
+  "Reinforcement Learning",
+  "JAX"
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+
+dependencies = [
+  "qdax[cuda12]==0.5.0",
+  "brax==0.12.3",
+  "evosax==0.2.0",
+  "notebook",
+  "kheperax",
+  "hydra-core",
+  "hydra-joblib-launcher",
+  "wandb"
+]
+
+[project.urls]
+Homepage = "https://github.com/TemplierPaul/QDax_ES"
+

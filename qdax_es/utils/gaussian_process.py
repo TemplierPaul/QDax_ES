@@ -190,7 +190,7 @@ def train_loop(gp_state, opt_state):
         gp_state.weights,
         )
     # Clip gradients
-    grads = jax.tree_map(lambda x: jnp.clip(x, -1e3, 1e3), grads)
+    grads = jax.tree.map(lambda x: jnp.clip(x, -1e3, 1e3), grads)
     # jax.debug.print("grads {}", grads)
     
     # update parameters 
@@ -203,7 +203,7 @@ def train_loop(gp_state, opt_state):
         )
     # jax.debug.print("new params {}", params)
     # Apply softplus to all components
-    # params = jax.tree_map(softplus, params)
+    # params = jax.tree.map(softplus, params)
     # jax.debug.print("params {}", params)
     new_gp_state = gp_state.replace(kernel_params=params)
     # jax.debug.print("Params diff {}", jax.tree_util.tree_multimap(lambda x, y: x-y, gp_state.kernel_params, new_gp_state.kernel_params))
@@ -256,7 +256,7 @@ def get_init_state(gp_state):
     # pick first valid one
     index = jnp.argmax(valid_params)
 
-    params = jax.tree_util.tree_map(
+    params = jax.tree.map(
         lambda x: x[index],
         init_params,
     )

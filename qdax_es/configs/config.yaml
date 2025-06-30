@@ -1,0 +1,26 @@
+defaults:
+  - algo: me
+  - task: optim/arm
+  - hydra: local
+  - _self_
+
+hydra:
+  searchpath: 
+    - pkg://qdax_bench.configs
+
+num_loops: 10
+seed: 42
+plots_dir: plots
+
+corrected_metrics: 
+  use: false
+  evals: 128
+
+wandb:
+  project: QDax_ES
+  entity: p-templier-imperial-college-london
+  use: False
+  tag: null
+
+log_csv: True
+plot: True

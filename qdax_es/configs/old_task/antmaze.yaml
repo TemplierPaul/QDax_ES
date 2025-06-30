@@ -1,0 +1,19 @@
+env_name: antmaze
+
+plotting:
+  task_name: AntMaze
+  fitness_bounds: [-8000, 2000]
+  max_eval_cell: 6
+
+episode_length: 250
+stochastic: false
+total_evaluations: 1e7
+
+network:
+  policy_hidden_layer_sizes: [256, 256]
+  activation: tanh
+
+es_params:
+  sigma_init: 0.05
+  popsize: 256
+  es_type: LM_MA_ES

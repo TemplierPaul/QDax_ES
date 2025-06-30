@@ -42,10 +42,11 @@ python main.py algo=jedi task=kh_standard
 
 - [X] Brax
 - Kheperax
-- [X] Custom fork
-- [X] Kheperax 0.2.0
+    - [X] Custom fork
+    - [X] Kheperax 0.2.0
 
 ### Pipeline
 
 - [X] Hydra
 - [X] W&B
+

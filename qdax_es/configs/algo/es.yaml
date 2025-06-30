@@ -1,0 +1,43 @@
+defaults:
+  - default_qd # Inherit all settings from default_qd
+  - _self_ # Allow overriding inherited values
+
+plotting:
+  algo_name: ES
+
+# Factory
+factory: 
+  _target_: qdax_es.factories.es.ESFactory
+
+repertoire_init:
+  _target_: qdax_es.core.containers.count_repertoire.CountMapElitesRepertoire.init
+  _partial_: true
+
+emitter: 
+  _target_: qdax_es.core.emitters.evosax_emitter.EvosaxEmitterAll
+  _partial_: true
+  population_size: ${algo.params.population_size}
+  es_type: ${algo.params.es_type}
+  std_init: ${algo.params.std_init}
+  ns_es: false
+  novelty_archive_size: 0
+
+initial_batch: 1
+
+group_defaults:
+  kheperax:
+    std_init: 0.05
+    population_size: 16
+    es_type: Sep_CMA_ES 
+  brax:
+    std_init: 0.05
+    population_size: 256
+    es_type: Sep_CMA_ES
+  optim: 
+    std_init: 0.05
+    population_size: 16
+    es_type: CMA_ES
+  bbob: 
+    std_init: 0.05
+    population_size: 16
+    es_type: CMA_ES

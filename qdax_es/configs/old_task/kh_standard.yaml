@@ -1,0 +1,23 @@
+env_name: kheperax_standard
+
+episode_length: 250
+stochastic: false
+total_evaluations: 2e6
+
+network:
+  policy_hidden_layer_sizes: [8]
+  activation: relu
+
+es_params:
+  sigma_init: 0.05
+  popsize: 16
+  es_type: Sep_CMA_ES
+
+plotting:
+  task_name: Kheperax Standard
+  fitness_bounds: [-350, -150]
+  max_eval_cell: 5.5
+
+descriptors:
+  minval: [0.0, 0.0]
+  maxval: [1.0, 1.0]

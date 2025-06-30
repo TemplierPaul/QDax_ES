@@ -88,10 +88,7 @@ class MEESEmitter(EvosaxEmitterCenter):
         self.novelty_nearest_neighbors = self._config.novelty_nearest_neighbors
         self.ranking_criteria = self._combined_criteria
 
-    @partial(
-        jax.jit,
-        static_argnames=("self",),
-    )
+
     def init(
         self,
         key: RNGKey,

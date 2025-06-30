@@ -1,0 +1,7 @@
+job:
+  chdir: True
+run:
+  dir: ./output/${now:%Y-%m-%d_%H%M%S_%f}
+sweep:
+  dir: ./output/${now:%Y-%m-%d_%H%M%S_%f}
+  subdir: ${hydra.job.num}

@@ -1,0 +1,14 @@
+job:
+  chdir: True
+run:
+  dir: ./output/${now:%Y-%m-%d_%H%M%S_%f}
+sweep:
+  dir: ./output/${now:%Y-%m-%d_%H%M%S_%f}
+  subdir: ${hydra.job.num}
+
+sweeper:
+  params:
+    # task: debug, debug_brax
+    # algo: jedi, dy_jedi, cmame, es, pga_me, cmamae
+    wandb.use: False
+    steps: 3

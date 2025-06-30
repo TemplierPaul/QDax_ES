@@ -1,0 +1,38 @@
+defaults:
+  - override launcher: joblib
+  - _self_
+
+job:
+  chdir: True
+run:
+  dir: ./output/${now:%Y-%m-%d_%H%M%S_%f}
+
+sweep:
+  dir: ./output/${now:%Y-%m-%d_%H%M%S_%f}
+  subdir: ${hydra.job.num}
+
+# sweeper:
+#   params:
+#     # algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9
+#     seed: range(5)
+#     # task: kh_standard
+#     task: kh_standard
+#     # task: halfcheetah, walker_2d
+#     algo: jedi, dy_jedi
+#     algo/gp: ewgp, sewgp, uniform
+
+# launcher:
+#   n_jobs: 5
+
+sweeper:
+  params:
+    # algo.params.alpha: 0.1, 0.3, 0.5, 0.7, 0.9
+    seed: range(42, 44)
+    # task: kh_standard
+    #, kh_snake, kh_standard
+    task: halfcheetah, walker_2d
+    algo: dy_jedi
+    algo/gp: gp, ewgp, sewgp
+
+launcher:
+  n_jobs: 4

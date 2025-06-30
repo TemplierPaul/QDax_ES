@@ -130,7 +130,7 @@ setup_config = {
     scoring_fn, 
     metrics_fn, 
     init_variables, 
-    random_key
+    key
 ) = setup_qd(setup_config)
 
 # ## Emitter
@@ -164,15 +164,15 @@ map_elites = CustomMAPElites(
 )
 
 with jax.disable_jit():
-    repertoire, emitter_state, random_key = map_elites.init(
+    repertoire, emitter_state, key = map_elites.init(
         init_variables, 
         centroids, 
-        random_key,
+        key,
         repertoire_kwargs=repertoire_kwargs
     )
 
 # with jax.disable_jit():
-# map_elites.update(repertoire, emitter_state, random_key);
+# map_elites.update(repertoire, emitter_state, key);
 
 env_steps = jnp.arange(num_iterations) * emitter.batch_size * episode_length
 
@@ -184,9 +184,9 @@ scan_update = jax.jit(map_elites.scan_update)
 metrics = {}
 iter = 0
 for step in tqdm(range(steps)):
-    (repertoire, emitter_state, random_key,), step_metrics = jax.lax.scan(
+    (repertoire, emitter_state, key,), step_metrics = jax.lax.scan(
         scan_update,
-        (repertoire, emitter_state, random_key),
+        (repertoire, emitter_state, key),
         (),
         length=int(num_iterations),
     )

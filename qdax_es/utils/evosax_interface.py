@@ -11,7 +11,7 @@ from jax.tree_util import tree_flatten, tree_unflatten
 
 
 def net_shape(net):
-    return jax.tree_map(lambda x: x.shape, net)
+    return jax.tree.map(lambda x: x.shape, net)
 
 class DummyReshaper(PyTreeNode):
     """ A placeholder reshaper that does nothing"""

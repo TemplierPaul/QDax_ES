@@ -1,0 +1,75 @@
+plotting:
+  algo_name: PGA-ME
+
+archive:
+  num_init_cvt_samples: 5000
+  num_centroids: 1024
+
+repertoire_init:
+  _target_: qdax_es.core.containers.count_repertoire.CountMapElitesRepertoire.init
+  _partial_: true
+
+# Factory
+factory: 
+  _target_: qdax_es.factories.pga_me.PGAMEFactory
+
+# config: ${oc.select:algo.env_config.${task.env_name}, ${algo.default_config}}
+
+emitter: 
+  _target_: qdax.core.emitters.pga_me_emitter.PGAMEEmitter
+  _partial_: true
+
+  variation_fn: 
+    _target_: qdax.core.emitters.mutation_operators.isoline_variation
+    _partial_: true
+    line_sigma: ${algo.params.line_sigma}
+    iso_sigma: ${algo.params.iso_sigma}
+
+  config:
+    _target_: qdax.core.emitters.pga_me_emitter.PGAMEConfig
+    # _partial_: true
+    env_batch_size: ${algo.params.batch_size}
+    proportion_mutation_ga: 0.5
+    num_critic_training_steps: ${algo.params.num_critic_training_steps}
+    num_pg_training_steps: ${algo.params.num_pg_training_steps}
+
+    # TD3 params
+    replay_buffer_size: 1_000_000
+    critic_hidden_layer_size: ${algo.params.critic_hidden_layer_size}
+    critic_learning_rate: 3e-4
+    greedy_learning_rate: 3e-4
+    policy_learning_rate: 5e-3
+    noise_clip: 0.5
+    policy_noise: 0.2
+    discount: 0.99
+    reward_scaling: 1.0
+    batch_size: 100
+    soft_tau_update: 0.005
+    policy_delay: 2
+
+
+group_defaults:
+  kheperax:
+    iso_sigma: 0.2
+    line_sigma: 0.0
+    batch_size: 64  
+    critic_hidden_layer_size: [16]
+    num_pg_training_steps: 10
+    num_critic_training_steps: 300
+  brax:
+    iso_sigma: 0.005
+    line_sigma: 0.05
+    batch_size: 256
+    critic_hidden_layer_size: [256, 256]
+    num_pg_training_steps: 150
+    num_critic_training_steps: 3000
+
+params: ${oc.select:algo.env_params.${task.env_name}, ${algo.group_defaults.kheperax}}
+
+env_params:
+  kheperax_pointmaze: ${algo.group_defaults.kheperax}
+  kheperax_snake: ${algo.group_defaults.kheperax}
+  kheperax_standard: ${algo.group_defaults.kheperax}
+  halfcheetah_uni: ${algo.group_defaults.brax}
+  walker2d_uni: ${algo.group_defaults.brax}
+  antmaze: ${algo.group_defaults.brax}
