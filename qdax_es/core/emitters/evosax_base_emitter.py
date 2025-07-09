@@ -108,6 +108,10 @@ class EvosaxEmitter(Emitter):
 
         self.restart = self._restart_random
 
+    @property
+    def evals_per_gen(self):
+        raise NotImplementedError("This method should be implemented in the child class")
+
     def init(
         self,
         key: RNGKey,
@@ -170,8 +174,7 @@ class EvosaxEmitter(Emitter):
         # return the initial state
         key, subkey = jax.random.split(key)
 
-        return (
-            EvosaxEmitterState(
+        return EvosaxEmitterState(
                 key=subkey,
                 es_state=es_state, 
                 es_params=es_params,
@@ -180,7 +183,6 @@ class EvosaxEmitter(Emitter):
                 emit_count=0,
                 restart_state=restart_state,
             )
-        )
     
     def es_ask(
             self,
@@ -197,6 +199,34 @@ class EvosaxEmitter(Emitter):
         offspring, es_state = self.es.ask(subkey, es_state, es_params)
 
         return offspring, key
+    
+    def es_tell(
+            self, 
+            emitter_state: EvosaxEmitterState,
+            offspring: Genotype,
+            fitnesses: Fitness,
+    ):
+        """
+        Update the ES with the fitnesses of the offspring.
+        """
+        es_state = emitter_state.es_state
+        es_params = emitter_state.es_params
+        key, subkey = jax.random.split(emitter_state.key)
+
+        fitnesses = - jnp.array(fitnesses) # Maximise
+
+        new_es_state, _ = self.es.tell(
+            subkey, 
+            population=offspring,
+            fitness=fitnesses, 
+            state=es_state, 
+            params=es_params
+            )
+
+        return emitter_state.replace(
+            es_state=new_es_state,
+            key=key,
+        )
     
     def restart_from(
             self, 
@@ -275,37 +305,9 @@ class EvosaxEmitter(Emitter):
         return emitter_state
 
 
-    @property
-    def evals_per_gen(self):
-        raise NotImplementedError("This method should be implemented in the child class")
     
-    def es_tell(
-            self, 
-            emitter_state: EvosaxEmitterState,
-            offspring: Genotype,
-            fitnesses: Fitness,
-    ):
-        """
-        Update the ES with the fitnesses of the offspring.
-        """
-        es_state = emitter_state.es_state
-        es_params = emitter_state.es_params
-        key, subkey = jax.random.split(emitter_state.key)
-
-        fitnesses = - jnp.array(fitnesses) # Maximise
-
-        new_es_state, _ = self.es.tell(
-            subkey, 
-            population=offspring,
-            fitness=fitnesses, 
-            state=es_state, 
-            params=es_params
-            )
-
-        return emitter_state.replace(
-            es_state=new_es_state,
-            key=key,
-        )
+    
+    
     
     """Defines how the genotypes should be sorted. Impacts the update
         of the CMAES state. In the end, this defines the type of CMAES emitter

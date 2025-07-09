@@ -1,0 +1,4 @@
+builder:
+  _target_: qdax_es.utils.restarts.base.DummyRestarter
+
+name: No Reset

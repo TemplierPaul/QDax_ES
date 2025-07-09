@@ -11,7 +11,7 @@ import optax
 EMPTY_WEIGHT = 1e4
 DEFAULT_X = 100
 EPSILON = 1e-4
-jitter = 1e-6
+JITTER = 1e-6
 
 learning_rate = 1e-3
 optimizer = optax.adam(learning_rate)
@@ -34,7 +34,6 @@ class RBFParams:
         obs_noise_sigma = jax.random.uniform(keys[2], minval=0., maxval=1)
         return cls(sigma, lengthscale, obs_noise_sigma)
 
-@jit
 def rbf_kernel(params, x1, x2):
     """RBF kernel with x in R^D"""
     sigma = params.sigma
@@ -132,14 +131,12 @@ class GPState(PyTreeNode):
         )
     
 
-@jit
 def compute_K(params, X, weights):
     """Compute the kernel matrix K using vmap"""
     # K = jax.vmap(rbf_kernel, in_axes=(None, 0, 1))(params, X, X)
     K = jax.vmap(lambda x1: jax.vmap(lambda x2: rbf_kernel(params, x1, x2))(X))(X)
-    return K + params.obs_noise_sigma**2 * weights + jitter * jnp.eye(X.shape[0])
+    return K + params.obs_noise_sigma**2 * weights + JITTER * jnp.eye(X.shape[0])
 
-@jit
 def compute_Kinv(gp_state):
     params = gp_state.kernel_params
     X = gp_state.x
@@ -151,7 +148,6 @@ def compute_Kinv(gp_state):
     Kinv = jnp.linalg.solve(L.T, jnp.linalg.solve(L, jnp.eye(X.shape[0])))
     return Kinv
 
-@jit
 def neg_marginal_likelihood(params, X, Y, weights):
     K = compute_K(params, X, weights) 
     # Cholesky decomposition
@@ -181,7 +177,6 @@ grad_neg_marginal_likelihood = jit(jax.grad(neg_marginal_likelihood))
 
 
 
-@jit
 def train_loop(gp_state, opt_state):
     grads = grad_neg_marginal_likelihood(
         gp_state.kernel_params, 
@@ -210,7 +205,6 @@ def train_loop(gp_state, opt_state):
     
     return new_gp_state, opt_state
     
-@jit
 def train_loop_scan(carry, _):
     # Unroll the loop
     gp_state, opt_state, is_nan = carry
@@ -228,7 +222,6 @@ def train_loop_scan(carry, _):
 
     return (new_gp_state, opt_state, is_nan), None
 
-@jit
 def get_init_state(gp_state):
     # Test initial params to make sure they are valid
     n_tests = 64

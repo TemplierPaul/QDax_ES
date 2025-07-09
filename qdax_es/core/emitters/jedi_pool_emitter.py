@@ -1,36 +1,27 @@
 from __future__ import annotations
 
-from functools import partial
-from typing import Optional, Tuple, Callable
-from chex import ArrayTree
+from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-import numpy as np 
 
-from qdax.custom_types import Centroid, Descriptor, ExtraScores, Fitness, Genotype, RNGKey
+from qdax.custom_types import Descriptor, ExtraScores, Fitness, Genotype, RNGKey
 
 from qdax.core.containers.mapelites_repertoire import (
     MapElitesRepertoire,
-    get_cells_indices,
 )
 
-from qdax.core.emitters.multi_emitter import MultiEmitter, MultiEmitterState
-from qdax.core.emitters.emitter import Emitter, EmitterState
+from qdax.core.emitters.emitter import Emitter
 
 
 from qdax_es.core.emitters.evosax_base_emitter import EvosaxEmitterState, MultiESEmitterState
 from qdax_es.core.emitters.jedi_emitter import (
-    JEDiEmitterState,
-    net_shape,
     split,
     split_tree,
 )
-from qdax_es.core.containers.gp_repertoire import GPRepertoire
-from qdax_es.utils.pareto_selection import get_pareto_indices, stoch_get_pareto_indices
 
 
-class UniformJEDiPoolEmitter(Emitter):
+class JEDiPoolEmitter(Emitter):
     def __init__(
         self,
         pool_size: int,
@@ -70,7 +61,7 @@ class UniformJEDiPoolEmitter(Emitter):
 
         emitter_states = jax.vmap(
             self.emitter.init,
-            in_axes=(0, None, None, None, None, None)
+            in_axes=(0, None, 0, None, None, None)
         )(
             subkeys,
             repertoire,
@@ -112,7 +103,6 @@ class UniformJEDiPoolEmitter(Emitter):
         """
         Update the state of the emitters
         """
-
         if emitter_state is None:
             return None
 
@@ -136,24 +126,19 @@ class UniformJEDiPoolEmitter(Emitter):
         )
 
         # jax.debug.print("new_sub_emitter_state: {}", net_shape(new_sub_emitter_state))
-
-        need_restart = jnp.any(jnp.array(need_train_gp))
-        # jax.debug.print("need_restart: {}", need_train_gp.sum())
-        target_bd_indices = self.get_target_bd_indices(
-            repertoire=repertoire,
-            need_restart=need_restart,
-            emitter_state = new_sub_emitter_state,
-            )
-        # jax.debug.print("target BD indices: {}", target_bd_indices)
         
         final_emitter_states = jax.vmap(
-            lambda i, state, restart: self.emitter.finish_state_update(state, repertoire, restart, i),
-            in_axes=(0, 0, 0)
+            lambda restart, state: self.emitter.finish_state_update(state, repertoire, restart),
+            in_axes=(0, 0)
         )(
-            target_bd_indices,
-            new_sub_emitter_state,
-            need_train_gp
+            need_train_gp,
+            new_sub_emitter_state
         )
+
+        # alphas = final_emitter_states.wtfs_alpha
+        # jax.debug.print(
+        #     "alphas: {}", alphas
+        # )
 
         # jax.debug.print("final_emitter_states: {}", net_shape(final_emitter_states))
 
@@ -177,7 +162,7 @@ class UniformJEDiPoolEmitter(Emitter):
         Returns:
             Offsprings and a new random key.
         """
-
+    
         if emitter_state is None:
             raise ValueError("Emitter state must be initialized before emitting.")
 
@@ -207,74 +192,73 @@ class UniformJEDiPoolEmitter(Emitter):
 
         return offsprings, {}
     
-    def get_target_bd_indices(
-        self,
-        repertoire,
-        need_restart,
-        emitter_state,
-        ):
-        """
-        Reset the target behavior descriptor of the emitters
-        """
-        # Sample target BD indices
-        key = emitter_state.key[0]
+    # def get_target_bd_indices(
+    #     self,
+    #     repertoire,
+    #     need_restart,
+    #     emitter_state,
+    #     ):
+    #     """
+    #     Reset the target behavior descriptor of the emitters
+    #     """
+    #     # Sample target BD indices
+    #     key = emitter_state.key[0]
 
-        indices = jax.random.choice(
-            key,
-            jnp.arange(len(repertoire.fitnesses)),
-            (self.pool_size,),
-            replace=False,
-        )
+    #     indices = jax.random.choice(
+    #         key,
+    #         jnp.arange(len(repertoire.fitnesses)),
+    #         (self.pool_size,),
+    #         replace=False,
+    #     )
 
-        # jax.debug.print("indices: {}", indices)
+    #     # jax.debug.print("indices: {}", indices)
 
-        return indices
+    #     return indices
         
 
-class GPJEDiPoolEmitter(UniformJEDiPoolEmitter):
-    def __init__(
-        self,
-        pool_size: int,
-        emitter:Emitter,
-        n_steps: int = 1000,
-    ):
-        self.pool_size = pool_size
-        self.emitter = emitter
+# class GPJEDiPoolEmitter(UniformJEDiPoolEmitter):
+#     def __init__(
+#         self,
+#         pool_size: int,
+#         emitter:Emitter,
+#         n_steps: int = 1000,
+#     ):
+#         self.pool_size = pool_size
+#         self.emitter = emitter
 
-        self.get_pareto_indices = partial(
-            stoch_get_pareto_indices, 
-            n_points=self.pool_size, 
-            max_depth=10
-            )
-        self.get_pareto_indices = jax.jit(self.get_pareto_indices)
-        self.train_select = jax.jit(partial(self._train_select, n_steps=n_steps))
+#         self.get_pareto_indices = partial(
+#             stoch_get_pareto_indices, 
+#             n_points=self.pool_size, 
+#             max_depth=10
+#             )
+#         self.get_pareto_indices = jax.jit(self.get_pareto_indices)
+#         self.train_select = jax.jit(partial(self._train_select, n_steps=n_steps))
 
-
-    def _train_select(self, repertoire, emitter_state, n_steps=1000):
-        """
-        Train the GP and select targets on the pareto front
-        """
-        fit_repertoire = repertoire.fit_gp(n_steps=n_steps)
-        mean, var = fit_repertoire.batch_predict(repertoire.centroids)
-        pareto_indices = self.get_pareto_indices(mean, var, emitter_state.key[0])
-        return pareto_indices
+#     def _train_select(self, repertoire, emitter_state, n_steps=1000):
+#         """
+#         Train the GP and select targets on the pareto front
+#         """
+#         fit_repertoire = repertoire.fit_gp(n_steps=n_steps)
+#         mean, var = fit_repertoire.batch_predict(repertoire.centroids)
+#         print(f"mean: {mean.shape}, var: {var.shape}")
+#         pareto_indices = self.get_pareto_indices(mean, var, emitter_state.key[0])
+#         return pareto_indices
         
-
-    def get_target_bd_indices(
-        self,
-        repertoire,
-        need_restart,
-        emitter_state,
-        ):
-        """
-        Train the GP and select targets on the pareto front if it needs to be trained, else call from the parent class
-        """
-        # jax.debug.print("need_restart: {}", need_restart)
-        return jax.lax.cond(
-            need_restart,
-            lambda x: self.train_select(repertoire, emitter_state),
-            lambda x: super(
-                GPJEDiPoolEmitter, self
-            ).get_target_bd_indices(repertoire, need_restart, emitter_state),
-            None
-        )
+#     def get_target_bd_indices(
+#         self,
+#         repertoire,
+#         need_restart,
+#         emitter_state,
+#         ):
+#         """
+#         Train the GP and select targets on the pareto front if it needs to be trained, else call from the parent class
+#         """
+#         # jax.debug.print("need_restart: {}", need_restart)
+#         return jax.lax.cond(
+#             need_restart,
+#             lambda x: self.train_select(repertoire, emitter_state),
+#             lambda x: super(
+#                 GPJEDiPoolEmitter, self
+#             ).get_target_bd_indices(repertoire, need_restart, emitter_state),
+#             None
+#         )

@@ -1,9 +1,11 @@
 defaults:
   - default_qd # Inherit all settings from default_qd
+  - es_params # Inherit ES parameters
+  - restarter: cma
   - _self_ # Allow overriding inherited values
 
 plotting:
-  algo_name: ES
+  algo_name: ${algo.params.es_type}
 
 # Factory
 factory: 
@@ -21,23 +23,6 @@ emitter:
   std_init: ${algo.params.std_init}
   ns_es: false
   novelty_archive_size: 0
+  restarter: ${algo.restarter.builder}
 
 initial_batch: 1
-
-group_defaults:
-  kheperax:
-    std_init: 0.05
-    population_size: 16
-    es_type: Sep_CMA_ES 
-  brax:
-    std_init: 0.05
-    population_size: 256
-    es_type: Sep_CMA_ES
-  optim: 
-    std_init: 0.05
-    population_size: 16
-    es_type: CMA_ES
-  bbob: 
-    std_init: 0.05
-    population_size: 16
-    es_type: CMA_ES

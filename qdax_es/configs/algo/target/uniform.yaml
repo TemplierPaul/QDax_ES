@@ -1,0 +1,8 @@
+# JEDi with uniform sampling
+
+name: U
+
+target_selector:
+  _target_: qdax_es.utils.target_selection.UniformTargetSelector
+  # _partial_: true
+  n_points: 1

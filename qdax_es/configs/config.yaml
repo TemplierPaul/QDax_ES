@@ -8,7 +8,7 @@ hydra:
   searchpath: 
     - pkg://qdax_bench.configs
 
-num_loops: 10
+num_loops: 100
 seed: 42
 plots_dir: plots
 
@@ -17,10 +17,13 @@ corrected_metrics:
   evals: 128
 
 wandb:
-  project: QDax_ES
+  project: JEDiTELO
   entity: p-templier-imperial-college-london
   use: False
   tag: null
 
-log_csv: True
+csv:
+  use: True
+  subsample: 10
+
 plot: True

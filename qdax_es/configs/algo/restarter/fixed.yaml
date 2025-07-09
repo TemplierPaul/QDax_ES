@@ -1,0 +1,19 @@
+builder:
+  _target_: qdax_es.utils.restarts.base.FixedGens
+  max_gens: ${algo.restarter.gens}
+
+gens: ${oc.select:algo.gens_defaults.${task.setup_type}.${oc.select:task.env_name, default}, 100}
+ 
+name: ${algo.restarter.gens} gens
+
+gens_defaults:
+  kheperax:
+    default: 100
+  brax:
+    default: 1000
+    halfcheetah_uni: 100
+    walker2d_uni: 1000
+  optim:
+    default: 100
+  bbob:
+    default: 100

@@ -20,9 +20,6 @@ class ESFactory:
             init_variables_func, 
             key
         ) = setup_qd(cfg)
-
-        # emitter = hydra.utils.instantiate(algo["emitter"])()
-        # print("Emitter: ", emitter)
         
         # EvosaxEmitterAll
         repertoire_init_fn = hydra.utils.instantiate(
@@ -50,11 +47,11 @@ class ESFactory:
 
         init_variables = init_variables_func(var_key)
 
-        repertoire, emitter_state, init_metrics = map_elites.init(
-            init_variables, 
-            centroids, 
-            subkey,
-        )
+        # repertoire, emitter_state, init_metrics = map_elites.init(
+        #     init_variables, 
+        #     centroids, 
+        #     subkey,
+        # )
 
         plot_prefix = algo["plotting"]["algo_name"].replace(" ", "_")
 
@@ -64,9 +61,8 @@ class ESFactory:
             key, 
             map_elites, 
             emitter, 
-            repertoire, 
-            emitter_state,
-            init_metrics,
+            init_variables, 
+            centroids,
             plot_prefix,
             scoring_fn,    
             )

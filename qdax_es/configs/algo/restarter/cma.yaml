@@ -1,0 +1,5 @@
+builder:
+  _target_: qdax_es.utils.restarts.cma.CMARestarter
+  es_type: ${algo.params.es_type}
+
+name: "CMA"

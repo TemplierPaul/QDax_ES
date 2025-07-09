@@ -127,6 +127,7 @@ class EvosaxEmitterAll(EvosaxEmitter):
             extra_scores=extra_scores,
             novelty_archive=emitter_state.novelty_archive,
         )
+        # jax.debug.print("Restart bool: {}", restart_bool)
 
         emitter_state = jax.lax.cond(
             restart_bool,

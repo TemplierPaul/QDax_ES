@@ -1,0 +1,27 @@
+builder:
+  _target_: qdax_es.utils.restarts.convergence.DualConvergenceRestarter
+  min_score_spread: ${algo.restarter.S}
+  min_bd_spread: ${algo.restarter.D}
+
+S: ${oc.select:algo.restarter.convergence_defaults.${task.setup_type}.${oc.select:task.env_name, default}, 10}
+D: ${oc.select:algo.restarter.convergence_defaults.${task.setup_type}.${oc.select:task.env_name, default}, 0.1}
+ 
+name: Dual (S ${algo.restarter.S} | D ${algo.restarter.D}) 
+
+convergence_defaults:
+  kheperax:
+    default: 
+      S: 10
+      D: 0.1
+  brax:
+    default: 
+      S: 10
+      D: 0.05
+  optim:
+    default: 
+      S: 1
+      D: 0.1
+  bbob:
+    default: 
+      S: 0.01
+      D: 0.1

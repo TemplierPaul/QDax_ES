@@ -13,3 +13,4 @@ plot_count/*
 *.out
 *.egg-info
 .venv/*
+sweep/*

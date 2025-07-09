@@ -1,0 +1,20 @@
+# Standard GP JEDi
+
+name: "GPC"
+
+steps: 1
+pareto_depth: 1
+tournament_size: 64
+
+target_selector:
+  _target_: qdax_es.utils.target_selection.GPCountSelector
+  # _partial_: true
+  gp_steps: ${algo.target.steps}
+  pareto_depth: ${algo.target.pareto_depth}
+  n_points: 1
+  tournament_size: ${oc.select:algo.target.tournament_size, ${algo.archive.num_centroids}}
+  gp: 
+    _target_: qdax_es.utils.gaussian_processes.base_gp.GaussianProcess
+    kernel_fn: 
+      _target_: qdax_es.utils.gaussian_processes.base_gp.rbf_kernel
+      _partial_: true

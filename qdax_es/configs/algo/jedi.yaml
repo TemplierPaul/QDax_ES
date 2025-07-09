@@ -1,61 +1,80 @@
 defaults:
-  - gp: gp 
+  - default_qd # Inherit all settings from default_qd
+  - es_params # Inherit ES parameters
+  - target: gp
+  - restarter: fixed
   - _self_ 
 
 algo: jedi
-pool_size: 4
+pool_size: ${algo.params.pool_size}
+alpha: ${oc.select:algo.alpha_defaults.${task.setup_type}.${oc.select:task.env_name, default}, 0.5}
+initial_batch: ${algo.pool_size}
 global_norm: false
-
-restarter:
-  _target_: qdax_es.utils.restart.FixedGens
-  max_gens: ${algo.params.gens}
-
-gp:
-  n_steps: 1000
-
-archive:
-  num_init_cvt_samples: 5000
-  num_centroids: 1024
 
 # Factory
 factory: 
   _target_: qdax_es.factories.jedi.JEDiFactory
 
 # Repertoire
-repertoire_init: ${oc.select:algo.gp.repertoire_init, ${algo.default_repertoire_init}}
-
-default_repertoire_init:
-  _target_: qdax_es.core.containers.gp_repertoire.GPRepertoire.init
+repertoire_init:
+  _target_: qdax_es.core.containers.count_repertoire.CountMapElitesRepertoire.init
   _partial_: true
-  weighted: false
+
+# Emitter
+emitter: 
+  _target_: qdax_es.core.emitters.jedi_emitter.JEDiEmitter
+  _partial_: true
+  population_size: ${algo.params.population_size}
+  std_init: ${algo.params.std_init}
+  es_type: ${algo.params.es_type}
+  global_norm: ${algo.global_norm}
+  restarter: ${algo.restarter.builder}
+  target_selector: ${algo.target.target_selector}
+
+pool_emitter: 
+  _target_: qdax_es.core.emitters.jedi_pool_emitter.JEDiPoolEmitter
+  _partial_: true
+  pool_size: ${algo.pool_size}
+  emitter: ${algo.emitter}
+
 
 # Plotting name
 plotting:
-  algo_name: ${algo.gp.jedi_prefix}JEDi (x${algo.pool_size} | α=${algo.params.alpha} | ${algo.params.gens} gens)
+  algo_name: JEDi (x${algo.pool_size} | α=${algo.alpha} | ${algo.restarter.name} | ${algo.target.name})
+  plotting_function: 
+    _target_: qdax_es.factories.jedi.plot_jedi
+    _partial_: true
 
 # Algo parameters
-params:
-  alpha: ${oc.select:algo.env_params.${task.env_name}.alpha, ${algo.default_params.alpha}}
-  gens: ${oc.select:algo.env_params.${task.env_name}.gens, ${algo.default_params.gens}}
+# params:
+#   alpha: ${oc.select:algo.alpha_defaults.${task.setup_type}.${oc.select:task.env_name, default}, 0.5}
+ 
+group_defaults:
+  kheperax:
+    alpha: ${algo.alpha}
+    pool_size: 16
+  brax:
+    alpha: ${algo.alpha}
+    pool_size: 4
+  optim:
+    alpha: ${algo.alpha}
+    pool_size: 16
+  bbob:
+    alpha: ${algo.alpha}
+    pool_size: 64
 
-default_params:
-  alpha: 0.5
-  gens: 100
-
-env_params:
-  kheperax_pointmaze:
-    alpha: 0.3
-  kheperax_snake:
-    alpha: 0.3
-  kheperax_standard:
-    alpha: 0.7
-  halfcheetah_uni:
-    alpha: 0.5
-    gens: 100
-  walker2d_uni:
-    alpha: 0.7
-    gens: 1000
-  antmaze:
-    alpha: 0.3
-    gens: 1000
-
+alpha_defaults:
+  kheperax:
+    default: decay
+    kheperax_pointmaze: 0.3
+    kheperax_snake: 0.3
+    kheperax_standard: 0.7
+  brax:
+    default: decay
+    halfcheetah_uni: 0.5
+    walker2d_uni: 0.7
+    antmaze: 0.3
+  optim:
+    default: 0.1
+  bbob:
+    default: 0.1

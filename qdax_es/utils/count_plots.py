@@ -253,16 +253,16 @@ def plot_archive_value(
             ax.fill(*zip(*polygon), alpha=0.8, color=my_cmap(norm(fitness)))
 
     # if descriptors are specified, add points location
-    if repertoire.descriptors is not None:
-        descriptors = repertoire.descriptors[~grid_empty]
-        ax.scatter(
-            descriptors[:, 0],
-            descriptors[:, 1],
-            c=fitnesses[~grid_empty],
-            cmap=my_cmap,
-            s=10,
-            zorder=0,
-        )
+    # if repertoire.descriptors is not None:
+    #     descriptors = repertoire.descriptors[~grid_empty]
+    #     ax.scatter(
+    #         descriptors[:, 0],
+    #         descriptors[:, 1],
+    #         c=fitnesses[~grid_empty],
+    #         cmap=my_cmap,
+    #         s=10,
+    #         zorder=0,
+    #     )
 
     # aesthetic
     ax.set_xlabel("Behavior Dimension 1")

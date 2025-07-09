@@ -50,3 +50,19 @@ python main.py algo=jedi task=kh_standard
 - [X] Hydra
 - [X] W&B
 
+## Architecture
+
+```mermaid
+graph TD;
+    Emitter --> EvosaxEmitter --> EvosaxEmitterAll;
+    EvosaxEmitterAll --> ES;
+    EvosaxEmitterAll --> jedi[JEDi/DyJEDi];
+    EvosaxEmitterAll --> cmame[CMA-ME/MAE];
+    EvosaxEmitter --> EvosaxEmitterCenter;
+    EvosaxEmitterCenter --> MEES;
+    EvosaxEmitterCenter --> MEMES;
+
+    cmame --o CMAMEPoolEmitter;
+    jedi --o JEDiPoolEmitter;
+
+```

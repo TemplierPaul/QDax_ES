@@ -1,0 +1,17 @@
+group_defaults:
+  kheperax:
+    std_init: 0.05
+    population_size: 16
+    es_type: CMA_ES 
+  brax:
+    std_init: 0.05
+    population_size: 256
+    es_type: Sep_CMA_ES
+  optim: 
+    std_init: 0.05
+    population_size: 16
+    es_type: CMA_ES
+  bbob: 
+    std_init: 0.05
+    population_size: 16
+    es_type: CMA_ES
