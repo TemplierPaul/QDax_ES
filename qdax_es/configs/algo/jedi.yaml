@@ -55,7 +55,7 @@ group_defaults:
     pool_size: 16
   brax:
     alpha: ${algo.alpha}
-    pool_size: 4
+    pool_size: 16
   optim:
     alpha: ${algo.alpha}
     pool_size: 16

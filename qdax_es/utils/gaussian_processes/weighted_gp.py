@@ -29,6 +29,26 @@ class WeightedGPParams(GPParams):
             kernel_params=self.kernel_params,
             noise_var=self.noise_var
         )
+    
+def weighted_constrain_params(params: WeightedGPParams) -> WeightedGPParams:
+    """Apply constraints to ensure parameters stay in valid ranges"""
+    # Use softplus to ensure positive parameters
+    constrained_kernel_params = {}
+    for key, value in params.kernel_params.items():
+        if key in ['sigma', 'length_scale']:
+            # Softplus with lower bound
+            constrained_kernel_params[key] = jnp.log(1 + jnp.exp(value)) + 1e-6
+        else:
+            constrained_kernel_params[key] = value
+    
+    noise_var = jnp.log(1 + jnp.exp(params.noise_var)) + 1e-6
+    
+    return WeightedGPParams(
+        kernel_params=constrained_kernel_params,
+        noise_var=noise_var,
+        weights=params.weights
+    )
+
 
 class WeightedGaussianProcess(GaussianProcess):
     """
@@ -183,7 +203,7 @@ class WeightedGaussianProcess(GaussianProcess):
             lambda: (params, opt_state),
             lambda: (new_params, new_opt_state),
         )
-        
+        params = weighted_constrain_params(params)
         return params, opt_state
     
     def fit_weighted(self, X: jnp.ndarray, y: jnp.ndarray, weights: jnp.ndarray,
@@ -229,11 +249,12 @@ class WeightedGaussianProcess(GaussianProcess):
         )
         constrained_base = constrain_params(base_params)
         
-        return WeightedGPParams(
+        params = WeightedGPParams(
             kernel_params=constrained_base.kernel_params,
             noise_var=constrained_base.noise_var,
             weights=params.weights
         )
+        return params
 
     def fit_predict_weighted(self, X: jnp.ndarray, y: jnp.ndarray, weights: jnp.ndarray,
                             params_init: WeightedGPParams = None, n_steps: int = 1000, 

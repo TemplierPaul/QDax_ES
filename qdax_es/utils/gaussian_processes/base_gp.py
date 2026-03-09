@@ -189,6 +189,7 @@ class GaussianProcess:
             lambda: (new_params, new_opt_state),
         )
         # jax.debug.print("Step: {}, Loss: {}", i, loss)
+        params = constrain_params(params)
         return params, opt_state
     
     def fit(self, X: jnp.ndarray, y: jnp.ndarray, params_init: GPParams = None, 

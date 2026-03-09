@@ -78,13 +78,6 @@ class JEDiFactory:
         key, var_key, subkey = jax.random.split(key, 3)
 
         init_variables = init_variables_func(var_key)
-
-        # repertoire, emitter_state, init_metrics = map_elites.init(
-        #     init_variables, 
-        #     centroids, 
-        #     subkey,
-        # )
-
         plot_prefix = f"JEDi_" + str(cfg['algo']['params']['alpha'])
 
         return (
